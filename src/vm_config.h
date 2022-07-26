@@ -107,6 +107,6 @@
   hal_abort("Fatal error: Out of memory.\n")
 
 #define MRBC_ABORT_BY_EXCEPTION(vm) \
-  mrbc_print_vm_exception( &vm ); hal_abort(0)
+  mrbc_print_vm_exception( vm ); hal_abort(0)
 
 #endif

@@ -1,103 +1,46 @@
+/* ************************************************************************** */
+/** main
+
+  @Company
+    ShimaneJohoshoriCenter.inc
+
+  @File Name
+    main.c
+
+  @Summary
+    mruby/c firmware for Rboard.
+
+  @Description
+    main routine.
+ */
+/* ************************************************************************** */
+
 #include <xc.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/attribs.h>
 #include <string.h>
-//#include <math.h>
+
+#include "pic32mx.h"
+#include "uart.h"
+#include "i2c.h"
+#include "adc.h"
+#include "spi.h"
+#include "digital.h"
 
 #include "mrubyc.h"
-#include "adc.h"
-#include "delay.h"
-#include "digital.h"
-#include "i2c.h"
 #include "mrbc_firm.h"
-#include "spi.h"
-#include "uart.h"
 
 
-// DEVCFG3
-// USERID = No Setting
-#pragma config PMDL1WAY = ON            // Peripheral Module Disable Configuration (Allow only one reconfiguration)
-#pragma config IOL1WAY = ON             // Peripheral Pin Select Configuration (Allow only one reconfiguration)
-
-// DEVCFG2
-#pragma config FPLLIDIV = DIV_2         // PLL Input Divider (2x Divider)
-#pragma config FPLLMUL = MUL_20         // PLL Multiplier (20x Multiplier)
-#pragma config FPLLODIV = DIV_4         // System PLL Output Clock Divider (PLL Divide by 2)
-
-// DEVCFG1
-#pragma config FNOSC = FRCPLL           // Oscillator Selection Bits (Fast RC Osc with PLL)
-#pragma config FSOSCEN = OFF            // Secondary Oscillator Enable (Disabled)
-#pragma config IESO = ON                // Internal/External Switch Over (Enabled)
-#pragma config POSCMOD = OFF            // Primary Oscillator Configuration (Primary osc disabled)
-#pragma config OSCIOFNC = OFF           // CLKO Output Signal Active on the OSCO Pin (Disabled)
-#pragma config FPBDIV = DIV_2           // Peripheral Clock Divisor (Pb_Clk is Sys_Clk/2)
-#pragma config FCKSM = CSECME           // Clock Switching and Monitor Selection (Clock Switch Enable, FSCM Enabled)
-#pragma config WDTPS = PS8192           // Watchdog Timer Postscaler->1:8192
-#pragma config WINDIS = OFF             // Watchdog Timer Window Enable (Watchdog Timer is in Non-Window Mode)
-#pragma config FWDTEN = OFF             // Watchdog Timer Disable (WDT Disable)
-
-// DEVCFG0
-#pragma config JTAGEN = OFF              // JTAG Enable (JTAG Port Enabled)
-#pragma config ICESEL = ICS_PGx1        // ICE/ICD Comm Channel Select (Communicate on PGEC3/PGED3)
-#pragma config PWP = OFF                // Program Flash Write Protect (Disable)
-#pragma config BWP = OFF                // Boot Flash Write Protect bit (Protection Disabled)
-#pragma config CP = OFF                 // Code Protect (Protection Disabled)
-
-// #pragma config statements should precede project file includes.
-// Use project enums instead of #define for ON and OFF.
+#include "pic32mx.c"
 
 
 #define MEMORY_SIZE (1024*40)
 uint8_t memory_pool[MEMORY_SIZE];
 uint8_t t_count = 0;
 
-//================================================================
-/*! system register lock / unlock
+
+/*
+  HAL functions.
 */
-void system_register_lock(void)
-{
-  SYSKEY = 0x0;
-}
-
-void system_register_unlock(void)
-{
-  unsigned int status;
-
-  // Suspend or Disable all Interrupts
-  asm volatile ("di %0" : "=r" (status));
-
-  // starting critical sequence
-  SYSKEY = 0x33333333; // write invalid key to force lock
-  SYSKEY = 0xAA996655; // write key1 to SYSKEY
-  SYSKEY = 0x556699AA; // write key2 to SYSKEY
-
-  // Restore Interrupts
-  if (status & 0x00000001) {
-    asm volatile ("ei");
-  } else {
-    asm volatile ("di");
-  }
-}
-
-
-//================================================================
-/*! software reset	DS60001118H
-*/
-void system_reset(void)
-{
-  system_register_unlock();
-
-  RSWRSTSET = 1;
-
-  // read RSWRST register to trigger reset
-  uint32_t dummy = RSWRST;
-  (void)dummy;
-
-  while(1)
-    ;
-}
-
 int hal_write(int fd, const void *buf, int nbytes) {
   return uart_write(&uart1_handle, buf, nbytes );
 }
@@ -120,21 +63,6 @@ void _mon_putc( char c )
   uart_write(&uart1_handle, &c, 1);
 }
 
-
-void pin_init(void){
-    ANSELA = 0;
-    ANSELB = 0;
-    PORTA = 0;
-    PORTB = 0;
-    TRISAbits.TRISA4 = 1;
-    TRISA &= 0xFC;
-    TRISB &= 0xFC;
-    TRISB |= 0x8c;
-    CNPDA = 0x0;
-    CNPUA = 0x0;
-    CNPDB = 0x0;
-    CNPUB |= 0x8c;
-}
 
 static void c_pin_init(mrb_vm *vm, mrb_value *v, int argc) {
     pin_init();
@@ -203,7 +131,7 @@ int main(void)
     INTCONbits.MVEC = 1;
     __builtin_enable_interrupts();
 
-    printf("\r\n\x1b(B\x1b)B\x1b[0m\x1b[2JRboard v*.*, mruby/c v3.1 start.\n");
+    mrbc_print("\r\n\x1b(B\x1b)B\x1b[0m\x1b[2JRboard v*.*, mruby/c v3.1 start.\n");
 
     if (check_timeout()){
         /* IDE code */

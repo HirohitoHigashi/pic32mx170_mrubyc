@@ -5,7 +5,6 @@
                    displayName="Header Files"
                    projectFiles="true">
       <itemPath>adc.h</itemPath>
-      <itemPath>delay.h</itemPath>
       <itemPath>digital.h</itemPath>
       <itemPath>i2c.h</itemPath>
       <itemPath>mrbc_firm.h</itemPath>
@@ -40,7 +39,6 @@
         <itemPath>src/error.c</itemPath>
         <itemPath>src/c_object.c</itemPath>
       </logicalFolder>
-      <itemPath>delay.c</itemPath>
       <itemPath>main.c</itemPath>
       <itemPath>i2c.c</itemPath>
       <itemPath>uart.c</itemPath>
@@ -48,6 +46,7 @@
       <itemPath>adc.c</itemPath>
       <itemPath>digital.c</itemPath>
       <itemPath>spi.c</itemPath>
+      <itemPath>pic32mx_common.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -66,7 +65,7 @@
         <targetDevice>PIC32MX170F256B</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>PICkit3PlatformTool</platformTool>
+        <platformTool>noID</platformTool>
         <languageToolchain>XC32</languageToolchain>
         <languageToolchainVersion>2.50</languageToolchainVersion>
         <platform>3</platform>
@@ -109,7 +108,7 @@
         <property key="enable-symbols" value="true"/>
         <property key="enable-unroll-loops" value="false"/>
         <property key="exclude-floating-point" value="false"/>
-        <property key="extra-include-directories" value=".;src"/>
+        <property key="extra-include-directories" value="pic32mx170f256b;.;src"/>
         <property key="generate-16-bit-code" value="false"/>
         <property key="generate-micro-compressed-code" value="false"/>
         <property key="isolate-each-function" value="false"/>
