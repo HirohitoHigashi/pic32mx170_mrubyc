@@ -171,18 +171,7 @@ static int cmd_reset(void)
 {
   __builtin_disable_interrupts();
 
-  // starting critical sequence
-  SYSKEY = 0x33333333; //write invalid key to force lock
-  SYSKEY = 0xAA996655; //write key1 to SYSKEY
-  SYSKEY = 0x556699AA; //write key2 to SYSKEY
-
-  RSWRSTbits.SWRST = 1;
-  uint32_t dummy = RSWRST;
-  (void)dummy;
-
-  while(1)
-    ;
-
+  system_reset();
   return 0;
 }
 
@@ -244,8 +233,8 @@ static int cmd_write(void)
   }
 
   // erase required amount of PAGE
-  uint8_t *page_top = p_irep_write - ((uintptr_t)p_irep_write % PAGE_SIZE);
-  uint8_t *next_page_top = page_top + PAGE_SIZE;
+  uint8_t *page_top = p_irep_write - ((uintptr_t)p_irep_write % FLASH_PAGE_SIZE);
+  uint8_t *next_page_top = page_top + FLASH_PAGE_SIZE;
   uint8_t *prog_end_addr = p_irep_write + ALIGN_ROW_SIZE(size);
 
   if( prog_end_addr > (uint8_t*)FLASH_END_ADDR ) {
@@ -258,7 +247,7 @@ static int cmd_write(void)
       u_puts("-ERR Flash erase error.");
       goto DONE;
     }
-    next_page_top += PAGE_SIZE;
+    next_page_top += FLASH_PAGE_SIZE;
   }
 
   // Write data to FLASH. segmentad by ROW size.
@@ -268,8 +257,8 @@ static int cmd_write(void)
       u_puts("-ERR Flash write error.");
       goto DONE;
     }
-    p_irep_write += ROW_SIZE;
-    p += ROW_SIZE;
+    p_irep_write += FLASH_ROW_SIZE;
+    p += FLASH_ROW_SIZE;
   }
 
   u_puts("+DONE");
