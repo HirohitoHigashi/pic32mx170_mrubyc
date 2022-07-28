@@ -29,6 +29,9 @@ extern "C" {
 
 void pin_init( void );
 void interrupt_init( void );
+int pin_to_oc_num( int port, int num );
+int assign_pwm_pin( int port, int num, int oc_num );
+
 
 #ifdef __cplusplus
 }

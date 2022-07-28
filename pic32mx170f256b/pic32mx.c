@@ -80,3 +80,44 @@ void interrupt_init( void )
   // Enable Global Interrupts
   __builtin_mtc0(12,0,(__builtin_mfc0(12,0) | 0x0001));
 }
+
+
+/*!
+  converts an I/O Pin number such as "A0" to an available OC number.
+
+  @param  port	port such as A=1, B=2...
+  @param  num	number 0..15
+ */
+int pin_to_oc_num( int port, int num )
+{
+  /* Output pin to OC number selection
+
+     see Datasheet DS60001168L
+         TABLE 11-2: OUTPUT PIN SELECTION
+   */
+  static const int8_t TBL_OC_NUM[3][16] = {
+    /*      num  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 */
+    /* PortA */ {1, 2, 4, 3, 4,-1,-1,-1, 2, 2,-1,-1,-1,-1,-1,-1},
+    /* PortB */ {3, 2, 4, 1, 1, 2, 4, 1, 2, 3, 3, 2,-1, 4, 3, 1},
+    /* PortC */ {1, 4, 3, 4, 3, 1, 4, 1, 2, 3,-1,-1,-1,-1,-1,-1},
+  };
+
+  return TBL_OC_NUM[ port-1 ][ num ];
+}
+
+/*!
+  Assign PWM output pin.
+
+  @param  port	port such as A=1, B=2...
+  @param  num	number 0..15
+  @param  oc_num OC number
+*/
+int assign_pwm_pin( int port, int num, int oc_num )
+{
+  static volatile uint32_t *RPxx[] = { &RPA0R, &RPB0R, &RPC0R };
+  static const uint8_t OC_NUM[] = {5, 5, 5, 5, 6};
+
+  RPxx[ port-1 ][ num ] = OC_NUM[ oc_num-1 ];
+
+  return 0;
+}

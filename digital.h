@@ -18,6 +18,7 @@
 #ifndef _DIGITAL_H
 #define _DIGITAL_H
 
+#include <stdint.h>
 #include "mrubyc.h"
 
 /* Provide C++ Compatibility */
@@ -27,13 +28,9 @@ extern "C" {
 
 /* C codes */
 typedef struct GPIO_HANDLE {
-  int pin_num;
+  uint8_t port;	// A=1,B=2,..,G=7
+  uint8_t num;	// 0..15
 } GPIO_HANDLE;
-
-typedef struct PWM_HANDLE {
-  int pin_num;
-} PWM_HANDLE;
-
 
 /* mruby/c codes */
 void mrbc_init_class_onboard(struct VM *vm);
