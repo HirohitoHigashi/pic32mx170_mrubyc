@@ -15,14 +15,13 @@
  */
 /* ************************************************************************** */
 
-#include "uart.h"
 #include <sys/attribs.h>
+#include "pic32mx.h"
+#include "uart.h"
+
 
 /* ================================ C codes ================================ */
 
-#if !defined(PBCLK)
-# define PBCLK 10000000UL
-#endif
 
 // global variables.
 UART_HANDLE uart1_handle, uart2_handle;
