@@ -2,7 +2,6 @@
   CPU related params.
 */
 
-#include "pic32mx_common.h"
 
 #if !defined(__32MX170F256B__) && !defined(__PIC32MX170F256B__)
 # error "Change the project property, xc32-gcc Include directories to the MPU you want to use."

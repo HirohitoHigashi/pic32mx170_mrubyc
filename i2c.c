@@ -371,6 +371,8 @@ static void c_i2c_status(mrb_vm *vm, mrb_value *v, int argc)
 /*! initialize
 */
 void mrbc_init_class_i2c(struct VM *vm){
+  i2c_init();
+
   mrbc_class *i2c;
   i2c = mrbc_define_class(0, "I2C",	mrbc_class_object);
 
