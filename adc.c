@@ -34,15 +34,44 @@ void adc_init()
 
 /* ============================= mruby/c codes ============================= */
 
-void c_adc_read(mrb_vm *vm, mrb_value *v, int argc)
+/*! ADC constructor
+
+  $adc_x = ADC.new( num )	# num: pin number of Rboard
+  $adc_x = ADC.new("A0")	# PIC origined pin assingment.
+*/
+void c_adc_new(mrb_vm *vm, mrb_value *v, int argc)
 {
-  int16_t ch = *((int16_t *)v->instance->data);
-  if( ch < 0 ) {
-    SET_FLOAT_RETURN( 0 );
+  if( argc == 0 ) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), 0);
     return;
   }
 
-  AD1CHSbits.CH0SA = ch;
+  mrbc_value val = mrbc_instance_new( vm, v->cls, sizeof(ADC_HANDLE) );
+  ADC_HANDLE *h = (ADC_HANDLE*)val.instance->data;
+
+  if( set_gpio_handle( &(h->gpio), &v[1] ) != 0 ) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "ADC: Invalid pin assignment.");
+    return;
+  }
+  h->channel = set_pin_for_adc( h->gpio.port, h->gpio.num );
+  if( h->channel < 0 ) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "ADC: Not analog pin.");
+    return;
+  }
+
+  SET_RETURN( val );
+}
+
+
+/*! ADC read
+
+  $adc_x.read()
+*/
+void c_adc_read(mrb_vm *vm, mrb_value *v, int argc)
+{
+  ADC_HANDLE *h = (ADC_HANDLE *)v->instance->data;
+
+  AD1CHSbits.CH0SA = h->channel;
   AD1CON1bits.SAMP = 1;
   while( !AD1CON1bits.DONE )
     ;
@@ -52,49 +81,13 @@ void c_adc_read(mrb_vm *vm, mrb_value *v, int argc)
 }
 
 
-void c_adc_new(mrb_vm *vm, mrb_value *v, int argc)
-{
-  // allocate instance with pin number memory.
-  *v = mrbc_instance_new(vm, v->cls, sizeof(int16_t));
-  if( !v ) return;	// raise?
-
-  // calc ADC channel
-  int pin_num;
-  if( mrbc_type(v[1]) == MRBC_TT_FIXNUM ) {
-    pin_num = mrbc_fixnum(v[1]);
-  } else {
-    pin_num = -1;
-  }
-
-  static const int8_t PIN_NUM_VS_ADC_CHANNEL[] = {
-    0,1,-1,-1,-1,2,3,4,5,-1,-1,-1,-1,-1,-1,-1,-1,12,11,10,9
-  };
-  if( pin_num < 0 || pin_num >= sizeof(PIN_NUM_VS_ADC_CHANNEL) ) {
-    *(int16_t *)(v->instance->data) = -1;
-    console_printf("ADC: Illegal pin number. (pin = 0..20)\n");
-    return;
-  }
-  if( (*(int16_t *)(v->instance->data) = PIN_NUM_VS_ADC_CHANNEL[pin_num]) < 0 ) {
-    console_printf("ADC: Pin %d cannot be analog input.\n", pin_num );
-    return;
-  }
-
-  // set pin to analog input.
-  if( pin_num < 2 ) {
-    ANSELASET = (1 << pin_num);
-    TRISASET = (1 << pin_num);
-  } else {
-    ANSELBSET = (1 << (pin_num - 5));
-    TRISBSET = (1 << (pin_num - 5));
-  }
-}
-
-
 void mrbc_init_class_adc(struct VM *vm)
 {
-    mrb_class *adc;
-    adc = mrbc_define_class(0, "ADC", 0);
-    mrbc_define_method(0, adc, "new", c_adc_new);
-    mrbc_define_method(0, adc, "read", c_adc_read);
-    mrbc_define_method(0, adc, "read_v", c_adc_read);
+  adc_init();
+
+  mrb_class *adc;
+  adc = mrbc_define_class(0, "ADC", 0);
+  mrbc_define_method(0, adc, "new", c_adc_new);
+  mrbc_define_method(0, adc, "read", c_adc_read);
+  mrbc_define_method(0, adc, "read_v", c_adc_read);
 }
