@@ -13,10 +13,6 @@
   @Description
     mruby/c function army
 
-    以下のレジスタが、番号ごとに一定番地離れている事に依存しています。
-      * GPIO 関連のレジスタが、ポートごとに 0x100番地
-      * OC(PWM) 関連のレジスタが、0x200番地
-    そうでないプロセッサに対応が必要になった場合は、戦略の変更が必要です。
  */
 /* ************************************************************************** */
 
@@ -24,17 +20,14 @@
 #include "pic32mx.h"
 #include "digital.h"
 
-//! get offset of port address.
-#define OFS_PORT(n)	(0x100 / sizeof(uint32_t) * ((n) - 1))
-#define OFS_OC(n)	(0x200 / sizeof(uint32_t) * ((n) - 1))
 
 /* ================================ C codes ================================ */
 
 
-static int set_gpio_handle( GPIO_HANDLE *h, mrbc_value v[] )
+int set_gpio_handle( GPIO_HANDLE *h, const mrbc_value *pin )
 {
-  if( v[1].tt == MRBC_TT_INTEGER ) {
-    int ch = mrbc_integer(v[1]);
+  if( pin->tt == MRBC_TT_INTEGER ) {
+    int ch = mrbc_integer(*pin);
     if( ch <= 4 ) {
       h->port = 1;
       h->num = ch;
@@ -43,8 +36,8 @@ static int set_gpio_handle( GPIO_HANDLE *h, mrbc_value v[] )
       h->num = ch-5;
     }
 
-  } else if( v[1].tt == MRBC_TT_STRING ) {
-    const char *s = mrbc_string_cstr(&v[1]);
+  } else if( pin->tt == MRBC_TT_STRING ) {
+    const char *s = mrbc_string_cstr(pin);
     if( 'A' <= s[0] && s[0] <= 'G' ) {
       h->port = s[0] - 'A' + 1;
     } else if( 'a' <= s[0] && s[0] <= 'g' ) {
@@ -102,7 +95,7 @@ static void c_gpio_new(mrb_vm *vm, mrbc_value v[], int argc)
   mrbc_value val = mrbc_instance_new( vm, v->cls, sizeof(GPIO_HANDLE) );
   GPIO_HANDLE *h = (GPIO_HANDLE*)val.instance->data;
 
-  if( set_gpio_handle( h, v ) != 0 ) goto ERROR_RETURN;
+  if( set_gpio_handle( h, &v[1] ) != 0 ) goto ERROR_RETURN;
   SET_RETURN( val );
   return;
 
@@ -195,40 +188,35 @@ static void c_gpio_pull(mrb_vm *vm, mrbc_value v[], int argc)
 */
 static void c_pwm_new(mrb_vm *vm, mrbc_value v[], int argc)
 {
-  if( argc == 0 ) goto ERROR_RETURN;
+  if( argc == 0 ) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), 0);
+    return;
+  }
 
-  mrbc_value val = mrbc_instance_new( vm, v->cls, sizeof(GPIO_HANDLE) );
-  GPIO_HANDLE *h = (GPIO_HANDLE*)val.instance->data;
+  mrbc_value val = mrbc_instance_new( vm, v->cls, sizeof(PWM_HANDLE) );
+  PWM_HANDLE *h = (PWM_HANDLE*)val.instance->data;
 
-  if( set_gpio_handle( h, v ) != 0 ) goto ERROR_RETURN;
-  int oc_num = pin_to_oc_num( h->port, h->num );
-  if( oc_num < 0 ) goto ERROR_RETURN;
-
-  // set pin to output mode.
-  volatile uint32_t *ansel_x_clr = &ANSELACLR;
-  volatile uint32_t *tris_x_clr = &TRISACLR;
-
-  ansel_x_clr[ OFS_PORT(h->port) ] = (1 << h->num);
-  tris_x_clr[ OFS_PORT(h->port) ] = (1 << h->num);
-
-  assign_pwm_pin( h->port, h->num, oc_num );
+  if( set_gpio_handle( &(h->gpio), &v[1] ) != 0 ) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "PWM: Invalid pin assignment.");
+    return;
+  }
+  h->oc_num = set_pin_for_pwm( h->gpio.port, h->gpio.num );
+  if( h->oc_num < 0 ) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "PWM: Can't assign PWM.");
+    return;
+  }
 
   // set OC module
   volatile uint32_t *oc_x_con = &OC1CON;
   volatile uint32_t *oc_x_r = &OC1R;
   volatile uint32_t *oc_x_rs = &OC1RS;
 
-  oc_x_con[ OFS_OC(oc_num) ] = 0x0006;	// PWM mode, use Timer2.
-  oc_x_r[ OFS_OC(oc_num) ] = 0;
-  oc_x_rs[ OFS_OC(oc_num) ] = 0;
-  oc_x_con[ OFS_OC(oc_num) ] |= 0x8000;	// ON
+  oc_x_con[ OFS_OC(h->oc_num) ] = 0x0006;	// PWM mode, use Timer2.
+  oc_x_r[ OFS_OC(h->oc_num) ] = 0;
+  oc_x_rs[ OFS_OC(h->oc_num) ] = 0;
+  oc_x_con[ OFS_OC(h->oc_num) ] |= 0x8000;	// ON
 
   SET_RETURN( val );
-  return;
-
-
- ERROR_RETURN:
-  mrbc_raise(vm, MRBC_CLASS(ArgumentError),0);
 }
 
 
@@ -271,7 +259,7 @@ static void c_pwm_period_us(mrb_vm *vm, mrbc_value v[], int argc)
 */
 static void c_pwm_duty(mrb_vm *vm, mrbc_value v[], int argc)
 {
-  GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
+  PWM_HANDLE *h = (PWM_HANDLE *)v->instance->data;
 
   if( argc != 1 ) return;
   if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) return;
@@ -281,9 +269,8 @@ static void c_pwm_duty(mrb_vm *vm, mrbc_value v[], int argc)
   uint16_t rs = pr * duty / 1024;
   if( duty == 1024 ) rs++;
 
-  int oc_num = pin_to_oc_num( h->port, h->num );
   volatile uint32_t *oc_x_rs = &OC1RS;
-  oc_x_rs[ OFS_OC(oc_num) ] = rs;
+  oc_x_rs[ OFS_OC(h->oc_num) ] = rs;
 }
 
 /*! PWM set duty cycle by microseconds.
@@ -292,16 +279,15 @@ static void c_pwm_duty(mrb_vm *vm, mrbc_value v[], int argc)
 */
 static void c_pwm_duty_us(mrb_vm *vm, mrbc_value v[], int argc)
 {
-  GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
+  PWM_HANDLE *h = (PWM_HANDLE *)v->instance->data;
 
   if( argc != 1 ) return;
   if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) return;
 
   uint16_t rs = ((uint64_t)mrbc_integer(v[1]) * (PBCLK/4) / 1000000 - 1);
 
-  int oc_num = pin_to_oc_num( h->port, h->num );
   volatile uint32_t *oc_x_rs = &OC1RS;
-  oc_x_rs[ OFS_OC(oc_num) ] = rs;
+  oc_x_rs[ OFS_OC(h->oc_num) ] = rs;
 }
 
 

@@ -11,6 +11,18 @@
 extern "C" {
 #endif
 
+/*! get offset of port address.
+
+    以下のレジスタが、番号ごとに一定番地離れている事に依存しています。
+      * GPIO 関連のレジスタが、ポートごとに 0x100番地
+      * OC(PWM) 関連のレジスタが、0x200番地
+    そうでないプロセッサに対応が必要になった場合は、戦略の変更が必要です。
+*/
+#define OFS_PORT(n)	(0x100 / sizeof(uint32_t) * ((n) - 1))
+#define OFS_OC(n)	(0x200 / sizeof(uint32_t) * ((n) - 1))
+
+
+//! flash memory address and parameter.
 #define FLASH_SAVE_ADDR 0xBD032000
 #define FLASH_END_ADDR  0xBD03EFFF
 #define FLASH_PAGE_SIZE 1024
@@ -26,10 +38,10 @@ extern "C" {
 #endif
 
 
-void pin_init( void );
-void interrupt_init( void );
-int pin_to_oc_num( int port, int num );
-int assign_pwm_pin( int port, int num, int oc_num );
+void pin_init(void);
+void interrupt_init(void);
+int set_pin_for_pwm(int port, int num);
+int set_pin_for_adc(int port, int num);
 
 
 #ifdef __cplusplus
