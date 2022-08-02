@@ -39,7 +39,7 @@ void adc_init()
   $adc_x = ADC.new( num )	# num: pin number of Rboard
   $adc_x = ADC.new("A0")	# PIC origined pin assingment.
 */
-void c_adc_new(mrb_vm *vm, mrb_value *v, int argc)
+void c_adc_new(mrb_vm *vm, mrb_value v[], int argc)
 {
   if( argc == 0 ) {
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), 0);
@@ -67,7 +67,7 @@ void c_adc_new(mrb_vm *vm, mrb_value *v, int argc)
 
   $adc_x.read()
 */
-void c_adc_read(mrb_vm *vm, mrb_value *v, int argc)
+void c_adc_read(mrb_vm *vm, mrb_value v[], int argc)
 {
   ADC_HANDLE *h = (ADC_HANDLE *)v->instance->data;
 

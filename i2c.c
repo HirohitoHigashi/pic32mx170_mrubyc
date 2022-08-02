@@ -172,7 +172,7 @@ static int i2c_read( int ack_nack )
     P : Stop condition
     A : Ack
 */
-static void c_i2c_write(mrb_vm *vm, mrb_value *v, int argc)
+static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
 {
   /*
     Get parameter
@@ -256,7 +256,7 @@ static void c_i2c_write(mrb_vm *vm, mrb_value *v, int argc)
     A : Ack
     N : Nack
 */
-static void c_i2c_read(mrb_vm *vm, mrb_value *v, int argc)
+static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
 {
   /*
     Get parameter
@@ -361,7 +361,7 @@ static void c_i2c_read(mrb_vm *vm, mrb_value *v, int argc)
   (mruby usage)
   s = i2c.status()
 */
-static void c_i2c_status(mrb_vm *vm, mrb_value *v, int argc)
+static void c_i2c_status(mrb_vm *vm, mrb_value v[], int argc)
 {
   SET_INT_RETURN(I2C2STAT);
 }
