@@ -29,7 +29,7 @@ extern "C" {
 /* C codes */
 typedef struct ADC_HANDLE {
   GPIO_HANDLE gpio;
-  int8_t channel;	// 0..15
+  int8_t channel;	// AN0..12
 } ADC_HANDLE;
 
 
