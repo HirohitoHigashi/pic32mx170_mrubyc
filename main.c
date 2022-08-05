@@ -20,12 +20,11 @@
 #include <string.h>
 
 #include "pic32mx.h"
-#include "uart.h"
-#include "i2c.h"
 #include "adc.h"
-#include "spi.h"
 #include "digital.h"
-
+#include "i2c.h"
+#include "uart.h"
+#include "spi.h"
 #include "mrubyc.h"
 #include "mrbc_firm.h"
 
@@ -129,16 +128,12 @@ int main(void)
   uart_init();
   tick_timer_init();
 
-  __delay_ms(1000);
+  /* Load the ruby programs on flash memory. */
+  if( check_timeout() ) {
+    add_code();
+  };
   static const char ST_MSG[] = "\r\n\x1b(B\x1b)B\x1b[0m\x1b[2JRboard v*.*, mruby/c v3.1 start.\n";
   hal_write( 0, ST_MSG, sizeof(ST_MSG) );
-
-
-  if (check_timeout()){
-    add_code();
-    //    memset( memory_pool, 0, sizeof(memory_pool));	// TODO
-  };
-
 
   /* init mruby/c VM */
   mrbc_init(memory_pool, MEMORY_SIZE);
@@ -151,7 +146,8 @@ int main(void)
   mrbc_init_class_onboard(0);
   mrbc_init_class_spi(0);
 
-  /* load the ruby programs on flash memory. */
+
+#if 1
   const uint8_t *fl_addr = (uint8_t*)FLASH_SAVE_ADDR;
   static const char RITE[4] = "RITE";
   while( strncmp( fl_addr, RITE, sizeof(RITE)) == 0 ) {
@@ -166,16 +162,24 @@ int main(void)
     fl_addr += ALIGN_ROW_SIZE( size );
   }
 
+#else
+  /* Or run the prepared bytecode.
+
+     How to create "prepared_bytecode.c"
+       mrbc --remove-lv -B bytecode -o prepared_bytecode.c *.rb
+  */
+  #include "prepared_bytecode.c"
+  mrbc_create_task(bytecode, 0);
+#endif
+
   /* and run! */
   mrbc_run();
 
-#if 0
   while(1) {
     LATAbits.LATA0 = 1;
-    __delay_ms( 1000 );
+    __delay_ms( 10 );
     LATAbits.LATA0 = 0;
     __delay_ms( 1000 );
   }
-#endif
   return 1;
 }

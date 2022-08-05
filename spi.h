@@ -19,14 +19,20 @@
 #define _SPI_H
 
 #include "mrubyc.h"
+#include "digital.h"
 
 /* Provide C++ Compatibility */
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 /* C codes */
-void spi_init(void);
+typedef struct SPI_HANDLE {
+  GPIO_HANDLE sdi;
+  GPIO_HANDLE sdo;
+  GPIO_HANDLE sck;
+  int8_t spi_num;
+} SPI_HANDLE;
 
 /* mruby/c codes */
 void mrbc_init_class_spi(struct VM *vm);

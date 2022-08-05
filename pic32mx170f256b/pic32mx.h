@@ -42,7 +42,7 @@ void pin_init(void);
 void interrupt_init(void);
 int set_pin_for_pwm(int port, int num);
 int set_pin_for_adc(int port, int num);
-
+int set_pin_for_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n );
 
 #ifdef __cplusplus
 }

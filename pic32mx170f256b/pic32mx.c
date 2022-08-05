@@ -41,6 +41,10 @@
 #pragma config CP = OFF    // Code Protect->Protection Disabled
 
 
+
+static volatile uint32_t *RPxx[] = { &RPA0R, &RPB0R, &RPC0R };
+
+
 /*!
   initialize I/O settings.
 */
@@ -116,7 +120,6 @@ int set_pin_for_pwm( int port, int num )
   tris_x_clr[ OFS_PORT(port) ] = (1 << num);
 
   // assign pin to pwm output.
-  static volatile uint32_t *RPxx[] = { &RPA0R, &RPB0R, &RPC0R };
   static const uint8_t OC_NUM[] = {5, 5, 5, 5, 6};
 
   RPxx[ port-1 ][ num ] = OC_NUM[ oc_num-1 ];
@@ -155,4 +158,133 @@ int set_pin_for_adc( int port, int num )
   tris_x_set[ OFS_PORT(port) ] = (1 << num);
 
   return ch;
+}
+
+
+/*!
+  assign the pin to SPI
+
+  @param  unit	SPI unit number
+  @param  sdi_p	SDI port such as A=1, B=2...
+  @param  sdi_n SDI port number 0..15
+  @param  sdo_p	SDI port
+  @param  sdo_n SDI port number
+  @param  sck_p	SDI port
+  @param  sck_n SDI port number
+  @return	minus value is error.
+*/
+int set_pin_for_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n )
+{
+  /*
+    Check argument. unit and SDI pin.
+
+    see Datasheet DS60001168L
+         TABLE 11-1: INPUT PIN SELECTION
+   */
+  static const struct {
+    uint8_t unit;	// 1..2
+    uint8_t port;	// A=1, B=2,...
+    uint8_t num;	// 0..15
+    uint8_t sel_val;
+  } TBL_INPUT_PIN_SELECTION[] = {
+    {1, 1,  1, 0x00},	// A1 = 0000
+    {1, 2,  5, 0x01},	// B5 = 0001
+    {1, 2,  1, 0x02},	// B1 = 0010
+    {1, 2, 11, 0x03},	// B11= 0011
+    {1, 2,  8, 0x04},	// B8 = 0100
+
+    {2, 1,  2, 0x00},	// A2 = 0000
+    {2, 2,  6, 0x01},	// B6 = 0001
+    {2, 1,  4, 0x02},	// A4 = 0010
+    {2, 2, 13, 0x03},	// B13= 0011
+    {2, 2,  2, 0x04},	// B2 = 0100
+  };
+  static const int NUM_OF_TBL_INPUT_PIN_SELECTION = sizeof(TBL_INPUT_PIN_SELECTION) / sizeof(TBL_INPUT_PIN_SELECTION[0]);
+
+  int sel_val_SDIxR;
+  int i;
+  for( i = 0; i < NUM_OF_TBL_INPUT_PIN_SELECTION; i++ ) {
+    if( unit  == TBL_INPUT_PIN_SELECTION[i].unit &&
+	sdi_p == TBL_INPUT_PIN_SELECTION[i].port &&
+	sdi_n == TBL_INPUT_PIN_SELECTION[i].num ) {
+      sel_val_SDIxR = TBL_INPUT_PIN_SELECTION[i].sel_val;
+      break;
+    }
+  }
+  if( i == NUM_OF_TBL_INPUT_PIN_SELECTION ) return -1;		// error return
+
+  /*
+    Check argument. SDO pin.
+
+    see Datasheet DS60001168L
+         TABLE 11-2: OUTPUT PIN SELECTION
+  */
+  static const struct {
+    uint8_t port;
+    uint8_t num;
+  } TBL_OUTPUT_PIN_SELECTION[] = {
+    { 1,  1 },	// RPA1
+    { 2,  5 },	// RPB5
+    { 2,  1 },	// RPB1
+    { 2, 11 },	// RPB11
+    { 2,  8 },	// RPB8
+    { 1,  2 },	// RPA2
+    { 2,  6 },	// RPB6
+//  { 1,  4 },	// RPA4  confrict UART1 for console
+    { 2, 13 },	// RPB13
+    { 2,  2 },	// RPB2
+  };
+  static const int NUM_OF_TBL_OUTPUT_PIN_SELECTION = sizeof(TBL_OUTPUT_PIN_SELECTION) / sizeof(TBL_OUTPUT_PIN_SELECTION[0]);
+
+  for( i = 0; i < NUM_OF_TBL_OUTPUT_PIN_SELECTION; i++ ) {
+    if( sdo_p == TBL_OUTPUT_PIN_SELECTION[i].port &&
+	sdo_n == TBL_OUTPUT_PIN_SELECTION[i].num ) break;
+  }
+  if( i == NUM_OF_TBL_OUTPUT_PIN_SELECTION ) return -2;		// error return
+
+  /*
+    Check argument. SCK pin.
+  */
+  static const struct {
+    uint8_t unit;
+    uint8_t port;
+    uint8_t num;
+  } TBL_SCK_PIN_SELECTION[] = {
+    { 1, 2, 14 },  // SPI1: B14
+    { 2, 2, 15 },  // SPI2: B15
+  };
+  static const int NUM_OF_TBL_SCK_PIN_SELECTION = sizeof(TBL_SCK_PIN_SELECTION) / sizeof(TBL_SCK_PIN_SELECTION[0]);
+
+  for( i = 0; i < NUM_OF_TBL_SCK_PIN_SELECTION; i++ ) {
+    if( unit  == TBL_SCK_PIN_SELECTION[i].unit &&
+	sck_p == TBL_SCK_PIN_SELECTION[i].port &&
+	sck_n == TBL_SCK_PIN_SELECTION[i].num ) break;
+  }
+  if( i == NUM_OF_TBL_SCK_PIN_SELECTION ) return -3;		// error return
+
+
+  // assign pins.
+  volatile uint32_t *tris_x_set = &TRISASET;
+  volatile uint32_t *tris_x_clr = &TRISACLR;
+  volatile uint32_t *ansel_x_clr = &ANSELACLR;
+
+  // SDI
+  tris_x_set[ OFS_PORT(sdi_p) ] = (1 << sdi_n);
+  ansel_x_clr[ OFS_PORT(sdi_p) ] = (1 << sdi_n);
+  if( unit == 1 ) {
+    SDI1R = sel_val_SDIxR;
+  } else {
+    SDI2R = sel_val_SDIxR;
+  }
+
+  // SDO
+  tris_x_clr[ OFS_PORT(sdo_p) ] = (1 << sdo_n);
+  ansel_x_clr[ OFS_PORT(sdo_p) ] = (1 << sdo_n);
+  RPxx[ sdo_p-1 ][ sdo_n ] = unit + 2;	// SDO1=0x03 or SDO2=0x04
+
+  // SCK
+  tris_x_clr[ OFS_PORT(sck_p) ] = (1 << sck_n);
+  ansel_x_clr[ OFS_PORT(sck_p) ] = (1 << sck_n);
+
+  return 0;
 }
