@@ -23,7 +23,6 @@
 
 /* ================================ C codes ================================ */
 
-
 int set_gpio_handle( GPIO_HANDLE *h, const mrbc_value *pin )
 {
   if( pin->tt == MRBC_TT_INTEGER ) {
@@ -61,7 +60,7 @@ int set_gpio_handle( GPIO_HANDLE *h, const mrbc_value *pin )
 
   leds_write( n )  # n = 0 to 0b1111 (bit mapped)
 */
-static void c_leds_write(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_leds_write(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   int led = GET_INT_ARG(1);
   LATAbits.LATA0 = led & 0x01;
@@ -77,7 +76,7 @@ static void c_leds_write(mrb_vm *vm, mrbc_value v[], int argc)
 
   x = sw()
 */
-static void c_sw(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_sw(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   SET_INT_RETURN( PORTBbits.RB7 );
 }
@@ -88,7 +87,7 @@ static void c_sw(mrb_vm *vm, mrbc_value v[], int argc)
   $gpio_x = GPIO.new( num )  # num = pin number of Rboard.
   $gpio_x = GPIO.new("A0")   # PIC origined pin assignment.
 */
-static void c_gpio_new(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_gpio_new(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( argc == 0 ) goto ERROR_RETURN;
 
@@ -107,17 +106,23 @@ static void c_gpio_new(mrb_vm *vm, mrbc_value v[], int argc)
 
 /*! GPIO setmode
 
-  $gpio_x.setmode( 0 )	# set output
-  $gpio_x.setmode( 1 )  # set input
+  $gpio_x.setmode( GPIO::OUT )	# set output
+  $gpio_x.setmode( GPIO::IN )   # set input
 */
-static void c_gpio_setmode(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_gpio_setmode(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
-  volatile uint32_t *ansel_x_clr = &ANSELACLR;
-  volatile uint32_t *tris_x = GET_INT_ARG(1) ? &TRISASET : &TRISACLR;
 
-  ansel_x_clr[ OFS_PORT(h->port) ] = (1 << h->num);
-  tris_x[ OFS_PORT(h->port) ] = (1 << h->num);
+  ANSELxCLR(h->port) = (1 << h->num);
+  if( GET_INT_ARG(1) == 0 ) {
+    // output mode.
+    TRISxCLR(h->port) = (1 << h->num);
+  } else {
+    // input mode.
+    TRISxSET(h->port) = (1 << h->num);
+  }
+  CNPUxCLR(h->port) = (1 << h->num);
+  CNPDxCLR(h->port) = (1 << h->num);
 }
 
 
@@ -125,12 +130,15 @@ static void c_gpio_setmode(mrb_vm *vm, mrbc_value v[], int argc)
 
   $gpio_x.write( 0 or 1 )
 */
-static void c_gpio_write(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_gpio_write(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
-  volatile uint32_t *lat_x = GET_INT_ARG(1) ? &LATASET : &LATACLR;
 
-  lat_x[ OFS_PORT(h->port) ] = (1 << h->num);
+  if( GET_INT_ARG(1) == 0 ) {
+    LATxCLR(h->port) = (1 << h->num);
+  } else {
+    LATxSET(h->port) = (1 << h->num);
+  }
 }
 
 
@@ -138,12 +146,11 @@ static void c_gpio_write(mrb_vm *vm, mrbc_value v[], int argc)
 
   x = $gpio_x.read()
 */
-static void c_gpio_read(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_gpio_read(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
-  volatile uint32_t *port_x = &PORTA;
 
-  SET_INT_RETURN( (port_x[ OFS_PORT(h->port) ] >> h->num) & 1 );
+  SET_INT_RETURN( (PORTx(h->port) >> h->num) & 1 );
 }
 
 
@@ -155,28 +162,23 @@ static void c_gpio_read(mrb_vm *vm, mrbc_value v[], int argc)
   $gpio_x.pull( -1 )  # pull down
   $gpio_x.pull( 0 )   # cancel
 */
-static void c_gpio_pull(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_gpio_pull(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
   int mode = GET_INT_ARG(1);
 
-  if( mode > 0) {
+  if( mode > 0 ) {
     // pull up.
-    volatile uint32_t *cnpu_x_set = &CNPUASET;
-    cnpu_x_set[ OFS_PORT(h->port) ] = (1 << h->num);
+    CNPUxSET(h->port) = (1 << h->num);
 
   } else if( mode < 0 ) {
     // pull down.
-    volatile uint32_t *cnpd_x_set = &CNPDASET;
-    cnpd_x_set[ OFS_PORT(h->port) ] = (1 << h->num);
+    CNPDxSET(h->port) = (1 << h->num);
 
   } else {
     // cancel.
-    volatile uint32_t *cnpu_x_clr = &CNPUACLR;
-    volatile uint32_t *cnpd_x_clr = &CNPDACLR;
-
-    cnpu_x_clr[ OFS_PORT(h->port) ] = (1 << h->num);
-    cnpd_x_clr[ OFS_PORT(h->port) ] = (1 << h->num);
+    CNPUxCLR(h->port) = (1 << h->num);
+    CNPDxCLR(h->port) = (1 << h->num);
   }
 }
 
@@ -186,7 +188,7 @@ static void c_gpio_pull(mrb_vm *vm, mrbc_value v[], int argc)
   $pwm = PWM.new( num )	 # num = pin number of Rboard.
   $pwm = PWM.new("A0")	 # PIC origined pin assignment.
 */
-static void c_pwm_new(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_pwm_new(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( argc == 0 ) {
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), 0);
@@ -207,14 +209,10 @@ static void c_pwm_new(mrb_vm *vm, mrbc_value v[], int argc)
   }
 
   // set OC module
-  volatile uint32_t *oc_x_con = &OC1CON;
-  volatile uint32_t *oc_x_r = &OC1R;
-  volatile uint32_t *oc_x_rs = &OC1RS;
-
-  oc_x_con[ OFS_OC(h->oc_num) ] = 0x0006;	// PWM mode, use Timer2.
-  oc_x_r[ OFS_OC(h->oc_num) ] = 0;
-  oc_x_rs[ OFS_OC(h->oc_num) ] = 0;
-  oc_x_con[ OFS_OC(h->oc_num) ] |= 0x8000;	// ON
+  OCxCON(h->oc_num) = 0x0006;		// PWM mode, use Timer2.
+  OCxR(h->oc_num) = 0;
+  OCxRS(h->oc_num) = 0;
+  OCxCON(h->oc_num) |= 0x8000;		// ON
 
   SET_RETURN( val );
 }
@@ -224,7 +222,7 @@ static void c_pwm_new(mrb_vm *vm, mrbc_value v[], int argc)
 
   $pwm.frequency( 440 )
 */
-static void c_pwm_frequency(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_pwm_frequency(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( argc != 1 ) return;
   if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) return;
@@ -240,7 +238,7 @@ static void c_pwm_frequency(mrb_vm *vm, mrbc_value v[], int argc)
 
   $pwm.period( 2273 )
 */
-static void c_pwm_period_us(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_pwm_period_us(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( argc != 1 ) return;
   if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) return;
@@ -257,7 +255,7 @@ static void c_pwm_period_us(mrb_vm *vm, mrbc_value v[], int argc)
 
   $pwm.duty( 512 )
 */
-static void c_pwm_duty(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_pwm_duty(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   PWM_HANDLE *h = (PWM_HANDLE *)v->instance->data;
 
@@ -269,15 +267,14 @@ static void c_pwm_duty(mrb_vm *vm, mrbc_value v[], int argc)
   uint16_t rs = pr * duty / 1024;
   if( duty == 1024 ) rs++;
 
-  volatile uint32_t *oc_x_rs = &OC1RS;
-  oc_x_rs[ OFS_OC(h->oc_num) ] = rs;
+  OCxRS(h->oc_num) = rs;
 }
 
 /*! PWM set duty cycle by microseconds.
 
   $pwm.duty( 1000 )
 */
-static void c_pwm_duty_us(mrb_vm *vm, mrbc_value v[], int argc)
+static void c_pwm_duty_us(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   PWM_HANDLE *h = (PWM_HANDLE *)v->instance->data;
 
@@ -286,8 +283,7 @@ static void c_pwm_duty_us(mrb_vm *vm, mrbc_value v[], int argc)
 
   uint16_t rs = ((uint64_t)mrbc_integer(v[1]) * (PBCLK/4) / 1000000 - 1);
 
-  volatile uint32_t *oc_x_rs = &OC1RS;
-  oc_x_rs[ OFS_OC(h->oc_num) ] = rs;
+  OCxRS(h->oc_num) = rs;
 }
 
 
@@ -303,7 +299,7 @@ void mrbc_init_class_onboard(struct VM *vm)
 */
 void mrbc_init_class_digital(struct VM *vm)
 {
-  mrb_class *gpio;
+  mrbc_class *gpio;
 
   gpio = mrbc_define_class(0, "GPIO", mrbc_class_object);
   mrbc_define_method(0, gpio, "new", c_gpio_new);
@@ -326,7 +322,7 @@ void mrbc_init_class_pwm(struct VM *vm)
   PR2 = 0xffff;
   T2CONSET = (1 << _T2CON_ON_POSITION);
 
-  mrb_class *pwm;
+  mrbc_class *pwm;
   pwm = mrbc_define_class(0, "PWM", mrbc_class_object);
   mrbc_define_method(0, pwm, "new", c_pwm_new);
   mrbc_define_method(0, pwm, "frequency", c_pwm_frequency);

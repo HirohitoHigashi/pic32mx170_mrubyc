@@ -15,15 +15,8 @@
  */
 /* ************************************************************************** */
 
-#include <xc.h>
 #include "pic32mx.h"
 #include "spi.h"
-
-#define SPIxCON(n)	*(&SPI1CON  + (0x200 / sizeof(uint32_t)) * ((n)-1))
-#define SPIxSTAT(n)	*(&SPI1STAT + (0x200 / sizeof(uint32_t)) * ((n)-1))
-#define SPIxBUF(n)	*(&SPI1BUF  + (0x200 / sizeof(uint32_t)) * ((n)-1))
-#define SPIxBRG(n)	*(&SPI1BRG  + (0x200 / sizeof(uint32_t)) * ((n)-1))
-#define SPIxCON2(n)	*(&SPI1CON2 + (0x200 / sizeof(uint32_t)) * ((n)-1))
 
 
 /* ================================ C codes ================================ */
@@ -138,7 +131,7 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
     }
 
     if( strcmp("mode", key) == 0 ) {
-      if( mrbc_type(kv[1]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+      if( mrbc_type(kv[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
       mode = mrbc_integer(kv[1]);
 
     } else if( strcmp("freq", key) == 0 ) {
@@ -154,7 +147,7 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
       }
 
     } else if( strcmp("unit", key) == 0 ) {
-      if( mrbc_type(kv[1]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+      if( mrbc_type(kv[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
       h->spi_num = mrbc_integer(kv[1]);
 
     } else if( strcmp("sdi_pin", key) == 0 ) {
@@ -246,7 +239,7 @@ static void c_spi_write(mrbc_vm *vm, mrbc_value v[], int argc)
     goto DONE;
   }
 
-  if( v[1].tt == MRBC_TT_FIXNUM ) {
+  if( v[1].tt == MRBC_TT_INTEGER ) {
     uint8_t *buf = mrbc_alloc( vm, argc );
     if( !buf ) goto DONE;	// ENOMEM
     int i;
@@ -276,7 +269,7 @@ static void c_spi_transfer(mrbc_vm *vm, mrbc_value v[], int argc)
   mrbc_value ret;
   SPI_HANDLE *h = (SPI_HANDLE *)v->instance->data;
 
-  if( v[1].tt == MRBC_TT_STRING && v[2].tt == MRBC_TT_FIXNUM ) {
+  if( v[1].tt == MRBC_TT_STRING && v[2].tt == MRBC_TT_INTEGER ) {
     int recv_len = GET_INT_ARG(2);
     uint8_t *buf = mrbc_alloc( vm, recv_len+1 );
     if( !buf ) goto ERROR_RETURN;		// ENOMEM
@@ -288,7 +281,7 @@ static void c_spi_transfer(mrbc_vm *vm, mrbc_value v[], int argc)
   }
 
 
-  if( v[1].tt == MRBC_TT_ARRAY && v[2].tt == MRBC_TT_FIXNUM ) {
+  if( v[1].tt == MRBC_TT_ARRAY && v[2].tt == MRBC_TT_INTEGER ) {
     int send_len = mrbc_array_size( &v[1] );
     int recv_len = GET_INT_ARG(2);
     uint8_t *buf = mrbc_raw_alloc( send_len > recv_len ? send_len : recv_len );
@@ -297,7 +290,7 @@ static void c_spi_transfer(mrbc_vm *vm, mrbc_value v[], int argc)
     int i;
     for( i = 0; i < send_len; i++ ) {
       mrbc_value v1 = mrbc_array_get( &v[1], i );
-      if( v1.tt != MRBC_TT_FIXNUM ) {		// TypeError. raise?
+      if( v1.tt != MRBC_TT_INTEGER ) {		// TypeError. raise?
 	mrbc_raw_free( buf );
 	goto ERROR_RETURN;
       }

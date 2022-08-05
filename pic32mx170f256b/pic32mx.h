@@ -7,6 +7,9 @@
 # error "Change the project property, xc32-gcc Include directories to the MPU you want to use."
 #endif
 
+#include <xc.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,8 +21,36 @@ extern "C" {
       * OC(PWM) 関連のレジスタが、0x200番地
     そうでないプロセッサに対応が必要になった場合は、戦略の変更が必要です。
 */
-#define OFS_PORT(n)	(0x100 / sizeof(uint32_t) * ((n) - 1))
-#define OFS_OC(n)	(0x200 / sizeof(uint32_t) * ((n) - 1))
+// Pin settings
+#define ANSELxSET(x)	*(&ANSELASET + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define ANSELxCLR(x)	*(&ANSELACLR + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define TRISxSET(x)	*(&TRISASET  + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define TRISxCLR(x)	*(&TRISACLR  + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define PORTx(x)	*(&PORTA     + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define LATxSET(x)	*(&LATASET   + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define LATxCLR(x)	*(&LATACLR   + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define CNPUxSET(x)	*(&CNPUASET  + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define CNPUxCLR(x)	*(&CNPUACLR  + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define CNPDxSET(x)	*(&CNPDASET  + (0x100 / sizeof(uint32_t)) * ((x)-1))
+#define CNPDxCLR(x)	*(&CNPDACLR  + (0x100 / sizeof(uint32_t)) * ((x)-1))
+
+// Output comparator
+#define OCxCON(x)	*(&OC1CON    + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define OCxR(x)		*(&OC1R      + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define OCxRS(x)	*(&OC1RS     + (0x200 / sizeof(uint32_t)) * ((x)-1))
+
+// SPI
+#define SPIxCON(x)	*(&SPI1CON   + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define SPIxSTAT(x)	*(&SPI1STAT  + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define SPIxBUF(x)	*(&SPI1BUF   + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define SPIxBRG(x)	*(&SPI1BRG   + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define SPIxCON2(x)	*(&SPI1CON2  + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define SDIxR(x)	*(&SDI1R     + (0x00c / sizeof(uint32_t)) * ((x)-1))
+
+// Output pin selection.
+#define RPxnR(x,n)	(TBL_RPxnR[(x)-1][n])
+extern volatile uint32_t *TBL_RPxnR[];
+
 
 
 //! flash memory address and parameter.

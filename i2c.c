@@ -172,7 +172,7 @@ static int i2c_read( int ack_nack )
     P : Stop condition
     A : Ack
 */
-static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_write(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     Get parameter
@@ -183,7 +183,7 @@ static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
   int res = 0;
 
   if( argc < 1 ) goto ERROR_PARAM;
-  if( mrbc_type(v[1]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+  if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
   i2c_adrs_7 = mrbc_fixnum(v[1]);
 
   if( argc >= 2 && mrbc_type(v[2]) == MRBC_TT_STRING ) {
@@ -216,7 +216,7 @@ static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
     if( write_ptr ) {
       res = i2c_write( *write_ptr++ );
     } else {
-      if( mrbc_type(v[i+2]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+      if( mrbc_type(v[i+2]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
       res = i2c_write( mrbc_fixnum(v[i+2]) );
     }
     if( res != 0 ) {
@@ -256,7 +256,7 @@ static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
     A : Ack
     N : Nack
 */
-static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_read(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     Get parameter
@@ -268,10 +268,10 @@ static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
   int res = 0;
 
   if( argc < 2 ) goto ERROR_PARAM;
-  if( mrbc_type(v[1]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+  if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
   i2c_adrs_7 = mrbc_fixnum(v[1]);
 
-  if( mrbc_type(v[2]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+  if( mrbc_type(v[2]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
   read_bytes = mrbc_fixnum(v[2]);
   buf = mrbc_alloc(vm, read_bytes + 1);
   if( !buf ) return;	// ENOMEM
@@ -299,7 +299,7 @@ static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
 
     int i;
     for( i = 3; i <= argc; i++ ) {
-      if( mrbc_type(v[i]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+      if( mrbc_type(v[i]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
       res = i2c_write( mrbc_fixnum(v[i]) );
       if( res != 0 ) {
 	console_printf("i2c.read: send data failed.\n");
@@ -361,7 +361,7 @@ static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
   (mruby usage)
   s = i2c.status()
 */
-static void c_i2c_status(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_status(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   SET_INT_RETURN(I2C2STAT);
 }
@@ -374,7 +374,7 @@ void mrbc_init_class_i2c(struct VM *vm){
   i2c_init();
 
   mrbc_class *i2c;
-  i2c = mrbc_define_class(0, "I2C",	mrbc_class_object);
+  i2c = mrbc_define_class(0, "I2C", mrbc_class_object);
 
   mrbc_define_method(0, i2c, "status", c_i2c_status);
   mrbc_define_method(0, i2c, "write", c_i2c_write);

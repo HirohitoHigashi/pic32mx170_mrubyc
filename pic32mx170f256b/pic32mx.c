@@ -42,11 +42,14 @@
 
 
 
-static volatile uint32_t *RPxx[] = { &RPA0R, &RPB0R, &RPC0R };
+volatile uint32_t *TBL_RPxnR[] = { &RPA0R, &RPB0R, &RPC0R };
 
 
 /*!
   initialize I/O settings.
+
+  方針: ハード的に用途が決定しているもの (LED, SW2, UART1) 以外は、
+  　　　全デジタル入力、内部プルダウンとしておく。
 */
 void pin_init( void )
 {
@@ -61,8 +64,8 @@ void pin_init( void )
   // Setting the Weak Pull Up and Weak Pull Down SFR(s)
   CNPUA = 0x0000;
   CNPUB = 0x0000 | 0x0080;	// B7: pull-up for SW
-  CNPDA = 0x0000;
-  CNPDB = 0x0000;
+  CNPDA = 0x0000 | 0x000c;	// ignore A0,A1,A4(UART)
+  CNPDB = 0x0000 | 0xff6c;	// ignore B0,B1,B4(UART),B7
 
   // Setting the Open Drain SFR(s)
   ODCA = 0x0000;
@@ -70,7 +73,7 @@ void pin_init( void )
 
   // Setting the Analog/Digital Configuration SFR(s)
   ANSELA = 0x0003 & 0x0000;	// all digital.
-  ANSELB = 0xF00F & 0xc000;	// B14,15:analog
+  ANSELB = 0xF00F & 0x0000;
 }
 
 
@@ -112,17 +115,12 @@ int set_pin_for_pwm( int port, int num )
 
   int oc_num = TBL_OC[ port-1 ][ num ];
 
-  // set pin to output mode.
-  volatile uint32_t *ansel_x_clr = &ANSELACLR;
-  volatile uint32_t *tris_x_clr = &TRISACLR;
-
-  ansel_x_clr[ OFS_PORT(port) ] = (1 << num);
-  tris_x_clr[ OFS_PORT(port) ] = (1 << num);
-
-  // assign pin to pwm output.
+  // set pin to output mode and assign to pwm.
+  ANSELxCLR(port) = (1 << num);
+  TRISxCLR(port) = (1 << num);
+  CNPDxCLR(port) = (1 << num);
   static const uint8_t OC_NUM[] = {5, 5, 5, 5, 6};
-
-  RPxx[ port-1 ][ num ] = OC_NUM[ oc_num-1 ];
+  RPxnR(port, num) = OC_NUM[ oc_num-1 ];
 
   return oc_num;
 }
@@ -151,11 +149,9 @@ int set_pin_for_adc( int port, int num )
   if( ch < 0 ) return ch;
 
   // set pin to analog input mode.
-  volatile uint32_t *ansel_x_set = &ANSELASET;
-  volatile uint32_t *tris_x_set = &TRISASET;
-
-  ansel_x_set[ OFS_PORT(port) ] = (1 << num);
-  tris_x_set[ OFS_PORT(port) ] = (1 << num);
+  ANSELxSET(port) = (1 << num);
+  TRISxSET(port) = (1 << num);
+  CNPDxCLR(port) = (1 << num);
 
   return ch;
 }
@@ -264,27 +260,22 @@ int set_pin_for_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int s
 
 
   // assign pins.
-  volatile uint32_t *tris_x_set = &TRISASET;
-  volatile uint32_t *tris_x_clr = &TRISACLR;
-  volatile uint32_t *ansel_x_clr = &ANSELACLR;
-
   // SDI
-  tris_x_set[ OFS_PORT(sdi_p) ] = (1 << sdi_n);
-  ansel_x_clr[ OFS_PORT(sdi_p) ] = (1 << sdi_n);
-  if( unit == 1 ) {
-    SDI1R = sel_val_SDIxR;
-  } else {
-    SDI2R = sel_val_SDIxR;
-  }
+  ANSELxCLR(sdi_p) = (1 << sdi_n);
+  TRISxSET(sdi_p) = (1 << sdi_n);
+  CNPDxCLR(sdi_p) = (1 << sdi_n);
+  SDIxR(unit) = sel_val_SDIxR;
 
   // SDO
-  tris_x_clr[ OFS_PORT(sdo_p) ] = (1 << sdo_n);
-  ansel_x_clr[ OFS_PORT(sdo_p) ] = (1 << sdo_n);
-  RPxx[ sdo_p-1 ][ sdo_n ] = unit + 2;	// SDO1=0x03 or SDO2=0x04
+  ANSELxCLR(sdo_p) = (1 << sdo_n);
+  TRISxCLR(sdo_p) = (1 << sdo_n);
+  CNPDxCLR(sdo_p) = (1 << sdo_n);
+  RPxnR(sdo_p-1, sdo_n) = unit + 2;	// SDO1=0x03 or SDO2=0x04
 
   // SCK
-  tris_x_clr[ OFS_PORT(sck_p) ] = (1 << sck_n);
-  ansel_x_clr[ OFS_PORT(sck_p) ] = (1 << sck_n);
+  ANSELxCLR(sck_p) = (1 << sck_n);
+  TRISxCLR(sck_p) = (1 << sck_n);
+  CNPDxCLR(sck_p) = (1 << sck_n);
 
   return 0;
 }

@@ -111,7 +111,7 @@ static int check_timeout( void )
 /*!
   initialize pin assign.
 */
-static void c_pin_init(mrb_vm *vm, mrb_value *v, int argc)
+static void c_pin_init(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   pin_init();
 }

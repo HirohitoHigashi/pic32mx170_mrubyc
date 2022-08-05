@@ -331,10 +331,10 @@ int uart_set_modem_params( UART_HANDLE *uh, int baud, int parity, int stop_bits,
   static const uint8_t u2tx_pins[] = {3,19,5,15,14};
   static const uint8_t u2rx_pins[] = {1,10,6,16,13};
 
-#define RPnR(pin) *((pin) < 5 ? &RPA0R + (pin) : &RPB0R + (pin) - 5)
-#define TRISxSET(pin) ( ((pin) < 5)? (TRISASET = 1 << (pin)) : (TRISBSET = 1 << ((pin)-5)) )
-#define TRISxCLR(pin) ( ((pin) < 5)? (TRISACLR = 1 << (pin)) : (TRISBCLR = 1 << ((pin)-5)) )
-#define LATxSET(pin)  ( ((pin) < 5)? (LATASET  = 1 << (pin)) : (LATBSET  = 1 << ((pin)-5)) )
+#define RPnR_(pin) *((pin) < 5 ? &RPA0R + (pin) : &RPB0R + (pin) - 5)
+#define TRISxSET_(pin) ( ((pin) < 5)? (TRISASET = 1 << (pin)) : (TRISBSET = 1 << ((pin)-5)) )
+#define TRISxCLR_(pin) ( ((pin) < 5)? (TRISACLR = 1 << (pin)) : (TRISBCLR = 1 << ((pin)-5)) )
+#define LATxSET_(pin)  ( ((pin) < 5)? (LATASET  = 1 << (pin)) : (LATBSET  = 1 << ((pin)-5)) )
 
   if( 0 <= txd && txd <= 20 ) {
     int i;
@@ -352,10 +352,10 @@ int uart_set_modem_params( UART_HANDLE *uh, int baud, int parity, int stop_bits,
       break;
 
     common_proc_txd:
-      RPnR(uh->txd_pin) = 0;	// unmap txd pin.
-      LATxSET(txd);		// default HIGH level.
-      TRISxCLR(txd);		// set to output
-      RPnR(txd) = uh->number;	// remap txd pin.
+      RPnR_(uh->txd_pin) = 0;	// unmap txd pin.
+      LATxSET_(txd);		// default HIGH level.
+      TRISxCLR_(txd);		// set to output
+      RPnR_(txd) = uh->number;	// remap txd pin.
       uh->txd_pin = txd;
     }
   }
@@ -366,7 +366,7 @@ int uart_set_modem_params( UART_HANDLE *uh, int baud, int parity, int stop_bits,
     case 1:
       for( i = 0; i < sizeof(u1rx_pins); i++ ) {
 	if( u1rx_pins[i] == rxd ) {
-	  TRISxSET(rxd);		// set to input
+	  TRISxSET_(rxd);		// set to input
 	  U1RXRbits.U1RXR = i;
 	  break;
 	}
@@ -376,7 +376,7 @@ int uart_set_modem_params( UART_HANDLE *uh, int baud, int parity, int stop_bits,
     case 2:
       for( i = 0; i < sizeof(u2rx_pins); i++ ) {
 	if( u2rx_pins[i] == rxd ) {
-	  TRISxSET(rxd);		// set to input
+	  TRISxSET_(rxd);		// set to input
 	  U2RXRbits.U2RXR = i;
 	  break;
 	}
@@ -491,11 +491,11 @@ static void c_uart_new(mrbc_vm *vm, mrbc_value v[], int argc)
 
   // get parameter.
   if( argc >= 1 ) {
-    if( mrbc_type(v[1]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+    if( mrbc_type(v[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
     ch = mrbc_fixnum(v[1]);
   }
   if( argc >= 2 ) {
-    if( mrbc_type(v[2]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+    if( mrbc_type(v[2]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
     baud = mrbc_fixnum(v[2]);
   }
 
@@ -564,7 +564,7 @@ static void c_uart_set_modem_params(mrbc_vm *vm, mrbc_value v[], int argc)
   while( mrbc_hash_i_has_next(&ite) ) {
     mrbc_value *kv = mrbc_hash_i_next(&ite);
     if( mrbc_type(kv[0]) != MRBC_TT_STRING ) goto ERROR_PARAM;
-    if( mrbc_type(kv[1]) != MRBC_TT_FIXNUM ) goto ERROR_PARAM;
+    if( mrbc_type(kv[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
 
     if( strcmp("baud", RSTRING_PTR(kv[0])) == 0 ) {
       baud = kv[1].i;
