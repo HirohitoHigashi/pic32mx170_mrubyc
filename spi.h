@@ -31,7 +31,7 @@ typedef struct SPI_HANDLE {
   GPIO_HANDLE sdi;
   GPIO_HANDLE sdo;
   GPIO_HANDLE sck;
-  int8_t spi_num;
+  int8_t spi_unit;
 } SPI_HANDLE;
 
 /* mruby/c codes */

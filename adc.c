@@ -15,7 +15,11 @@
  */
 /* ************************************************************************** */
 
+#include <xc.h>
+
+#include "pic32mx.h"
 #include "adc.h"
+#include "mrubyc.h"
 
 
 /* ================================ C codes ================================ */
@@ -53,7 +57,7 @@ void c_adc_new(mrbc_vm *vm, mrbc_value v[], int argc)
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), "ADC: Invalid pin assignment.");
     return;
   }
-  h->channel = set_pin_for_adc( h->gpio.port, h->gpio.num );
+  h->channel = set_pin_to_analog_input( h->gpio.port, h->gpio.num );
   if( h->channel < 0 ) {
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), "ADC: Not analog pin.");
     return;

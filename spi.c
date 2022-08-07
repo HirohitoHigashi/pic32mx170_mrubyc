@@ -108,7 +108,7 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
   // set default.
   mode = 0;
   freq = 1000000;
-  h->spi_num = 1;
+  h->spi_unit = 1;
   h->sdi.port = 2; // "B5"
   h->sdi.num = 5;
   h->sdo.port = 2; // "B6"
@@ -148,7 +148,7 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
 
     } else if( strcmp("unit", key) == 0 ) {
       if( mrbc_type(kv[1]) != MRBC_TT_INTEGER ) goto ERROR_PARAM;
-      h->spi_num = mrbc_integer(kv[1]);
+      h->spi_unit = mrbc_integer(kv[1]);
 
     } else if( strcmp("sdi_pin", key) == 0 ) {
       flag_error |= set_gpio_handle( &(h->sdi), &kv[1] );
@@ -163,23 +163,23 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
 
  SET_SCK_PIN:
   h->sck.port = 2;
-  switch( h->spi_num ) {
+  switch( h->spi_unit ) {
   case 1: h->sck.num = 14; break;
   case 2: h->sck.num = 15; break;
   default:
     goto ERROR_PARAM;
   }
 
-  flag_error |= set_pin_for_spi( h->spi_num,
-				 h->sdi.port, h->sdi.num,
-				 h->sdo.port, h->sdo.num,
-				 h->sck.port, h->sck.num );
+  flag_error |= set_pin_to_spi( h->spi_unit,
+				h->sdi.port, h->sdi.num,
+				h->sdo.port, h->sdo.num,
+				h->sck.port, h->sck.num );
   if( flag_error ) goto ERROR_PARAM;
 
   // Initialize SPI registers.
-  SPIxSTAT(h->spi_num) = 0;
-  spi_set_frequency( h->spi_num, freq );
-  SPIxCON2(h->spi_num) = 0;
+  SPIxSTAT(h->spi_unit) = 0;
+  spi_set_frequency( h->spi_unit, freq );
+  SPIxCON2(h->spi_unit) = 0;
 
   static const uint32_t SPIxCON_MODES[] = {
     0x00018120,		// 0: CKP(CPOL)=0,CKE(/CPHA)=1
@@ -187,7 +187,7 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
     0x00018160,		// 2: CKP(CPOL)=1,CKE(/CPHA)=1
     0x00018060,		// 3: CKP(CPOL)=1,CKE(/CPHA)=0
   };
-  SPIxCON(h->spi_num) = SPIxCON_MODES[ mode ];
+  SPIxCON(h->spi_unit) = SPIxCON_MODES[ mode ];
 
   SET_RETURN( val );
   return;
@@ -215,7 +215,7 @@ static void c_spi_read(mrbc_vm *vm, mrbc_value v[], int argc)
     goto DONE;
   }
 
-  spi_transfer(h->spi_num, 0, 0, buf, recv_len, 0);
+  spi_transfer(h->spi_unit, 0, 0, buf, recv_len, 0);
   buf[recv_len] = 0;
   ret = mrbc_string_new_alloc( vm, buf, recv_len );
 
@@ -234,7 +234,7 @@ static void c_spi_write(mrbc_vm *vm, mrbc_value v[], int argc)
   SPI_HANDLE *h = (SPI_HANDLE *)v->instance->data;
 
   if( v[1].tt == MRBC_TT_STRING ) {
-    spi_transfer( h->spi_num, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]),
+    spi_transfer( h->spi_unit, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]),
 		  0, 0, 0 );
     goto DONE;
   }
@@ -246,7 +246,7 @@ static void c_spi_write(mrbc_vm *vm, mrbc_value v[], int argc)
     for( i = 0; i < argc; i++ ) {
       buf[i] = GET_INT_ARG(i+1);
     }
-    spi_transfer( h->spi_num, buf, argc, 0, 0, 0 );
+    spi_transfer( h->spi_unit, buf, argc, 0, 0, 0 );
     mrbc_free( vm, buf );
     goto DONE;
   }
@@ -273,7 +273,7 @@ static void c_spi_transfer(mrbc_vm *vm, mrbc_value v[], int argc)
     int recv_len = GET_INT_ARG(2);
     uint8_t *buf = mrbc_alloc( vm, recv_len+1 );
     if( !buf ) goto ERROR_RETURN;		// ENOMEM
-    spi_transfer( h->spi_num, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]),
+    spi_transfer( h->spi_unit, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]),
 		  buf, recv_len, 0 );
     buf[recv_len] = 0;
     ret = mrbc_string_new_alloc( vm, buf, recv_len );
@@ -297,7 +297,7 @@ static void c_spi_transfer(mrbc_vm *vm, mrbc_value v[], int argc)
       buf[i] = v1.i;
     }
 
-    spi_transfer( h->spi_num, buf, send_len, buf, recv_len, 0 );
+    spi_transfer( h->spi_unit, buf, send_len, buf, recv_len, 0 );
     buf[recv_len] = 0;
     ret = mrbc_string_new_alloc( vm, buf, recv_len );
     goto DONE;

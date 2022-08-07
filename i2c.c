@@ -15,24 +15,30 @@
  */
 /* ************************************************************************** */
 
+#include <xc.h>
+#include "pic32mx.h"
 #include "i2c.h"
-#include "pic32mx_common.h"
+#include "mrubyc.h"
+
+#define I2CFREQ 100000	// 100kHz
 
 /* ================================ C codes ================================ */
 
 //================================================================
 /*! initialize
+
+  use: SDA=B2, SCL=B3
 */
 void i2c_init(void)
 {
-  ANSELBbits.ANSB2 = 0;
-  ANSELBbits.ANSB3 = 0;
-  TRISBbits.TRISB2 = 1;	// need? this is default values.
-  TRISBbits.TRISB3 = 1;	// need?
+  set_pin_to_digital_output( 2, 2 );
+  set_pin_to_digital_output( 2, 3 );
+
   CNPUBbits.CNPUB2 = 1;
   CNPUBbits.CNPUB3 = 1;
 
-  I2C2BRG = 0x31;	// 0x31 : see DS60001116G Table 24-2
+  // DS60001116G Equation 24-1: Baud Rate Generator Reload Value Calculation
+  I2C2BRG = (uint16_t)(PBCLK / (2.0 * I2CFREQ) - 1 - PBCLK * 130e-9 / 2);
   I2C2CON = 0x8200;	// I2C : Enable, 100kHz
   I2C2STAT = 0x0;
 }

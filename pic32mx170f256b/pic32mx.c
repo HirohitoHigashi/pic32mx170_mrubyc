@@ -8,6 +8,7 @@
 */
 
 #include <xc.h>
+#include "pic32mx.h"
 
 
 // DEVCFG3
@@ -90,13 +91,80 @@ void interrupt_init( void )
 
 
 /*!
+  assign the pin to digital input mode
+
+  @param  port	port such as A=1, B=2...
+  @param  num	number 0..15
+  @return	dummy
+*/
+int set_pin_to_digital_input( int port, int num )
+{
+  ANSELxCLR(port) = (1 << num);
+  TRISxSET(port) = (1 << num);
+  CNPUxCLR(port) = (1 << num);
+  CNPDxCLR(port) = (1 << num);
+
+  return 0;
+}
+
+
+/*!
+  assign the pin to digital output mode
+
+  @param  port	port such as A=1, B=2...
+  @param  num	number 0..15
+  @return	dummy
+*/
+int set_pin_to_digital_output( int port, int num )
+{
+  ANSELxCLR(port) = (1 << num);
+  TRISxCLR(port) = (1 << num);
+  CNPUxCLR(port) = (1 << num);
+  CNPDxCLR(port) = (1 << num);
+
+  return 0;
+}
+
+
+/*!
+  assign the pin to analog input mode
+
+  @param  port	port such as A=1, B=2...
+  @param  num	number 0..15
+  @return	ADC cnannel number or -1 is error.
+*/
+int set_pin_to_analog_input( int port, int num )
+{
+  /* Output pin to  number selection
+     see Datasheet DS60001168L  TABLE 3
+   */
+  static const int8_t TBL_AN[3][16] = {
+    /*      num   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 */
+    /* PortA */ { 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+    /* PortB */ { 2, 3, 4, 5,-1,-1,-1,-1,-1,-1,-1,-1,12,11,10, 9},
+    /* PortC */ {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+  };
+
+  int ch = TBL_AN[ port-1 ][ num ];
+  if( ch < 0 ) return ch;
+
+  ANSELxSET(port) = (1 << num);
+  TRISxSET(port) = (1 << num);
+  CNPUxCLR(port) = (1 << num);
+  CNPDxCLR(port) = (1 << num);
+
+  return ch;
+}
+
+
+/*!
   assign the pin to pwm output mode.
 
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
   @return	OC(PWM) unit number or -1 is error.
 */
-int set_pin_for_pwm( int port, int num )
+int set_pin_to_pwm( int port, int num )
 {
   /* Output pin to OC number selection
 
@@ -116,44 +184,12 @@ int set_pin_for_pwm( int port, int num )
   int oc_num = TBL_OC[ port-1 ][ num ];
 
   // set pin to output mode and assign to pwm.
-  ANSELxCLR(port) = (1 << num);
-  TRISxCLR(port) = (1 << num);
-  CNPDxCLR(port) = (1 << num);
+  set_pin_to_digital_output( port, num );
+
   static const uint8_t OC_NUM[] = {5, 5, 5, 5, 6};
   RPxnR(port, num) = OC_NUM[ oc_num-1 ];
 
   return oc_num;
-}
-
-
-/*!
-  assign the pin to ADC input mode.
-
-  @param  port	port such as A=1, B=2...
-  @param  num	number 0..15
-  @return	ADC cnannel number or -1 is error.
- */
-int set_pin_for_adc( int port, int num )
-{
-  /* Output pin to  number selection
-     see Datasheet DS60001168L  TABLE 3
-   */
-  static const int8_t TBL_AN[3][16] = {
-    /*      num   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 */
-    /* PortA */ { 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-    /* PortB */ { 2, 3, 4, 5,-1,-1,-1,-1,-1,-1,-1,-1,12,11,10, 9},
-    /* PortC */ {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-  };
-
-  int ch = TBL_AN[ port-1 ][ num ];
-  if( ch < 0 ) return ch;
-
-  // set pin to analog input mode.
-  ANSELxSET(port) = (1 << num);
-  TRISxSET(port) = (1 << num);
-  CNPDxCLR(port) = (1 << num);
-
-  return ch;
 }
 
 
@@ -169,7 +205,7 @@ int set_pin_for_adc( int port, int num )
   @param  sck_n SDI port number
   @return	minus value is error.
 */
-int set_pin_for_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n )
+int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n )
 {
   /*
     Check argument. unit and SDI pin.
@@ -261,21 +297,15 @@ int set_pin_for_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int s
 
   // assign pins.
   // SDI
-  ANSELxCLR(sdi_p) = (1 << sdi_n);
-  TRISxSET(sdi_p) = (1 << sdi_n);
-  CNPDxCLR(sdi_p) = (1 << sdi_n);
+  set_pin_to_digital_input( sdi_p, sdi_n );
   SDIxR(unit) = sel_val_SDIxR;
 
   // SDO
-  ANSELxCLR(sdo_p) = (1 << sdo_n);
-  TRISxCLR(sdo_p) = (1 << sdo_n);
-  CNPDxCLR(sdo_p) = (1 << sdo_n);
+  set_pin_to_digital_output( sdo_p, sdo_n );
   RPxnR(sdo_p-1, sdo_n) = unit + 2;	// SDO1=0x03 or SDO2=0x04
 
   // SCK
-  ANSELxCLR(sck_p) = (1 << sck_n);
-  TRISxCLR(sck_p) = (1 << sck_n);
-  CNPDxCLR(sck_p) = (1 << sck_n);
+  set_pin_to_digital_output( sck_p, sck_n );
 
   return 0;
 }

@@ -17,8 +17,10 @@
 /* ************************************************************************** */
 
 #include <stdint.h>
+#include <xc.h>
 #include "pic32mx.h"
 #include "digital.h"
+#include "mrubyc.h"
 
 
 /* ================================ C codes ================================ */
@@ -113,16 +115,11 @@ static void c_gpio_setmode(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   GPIO_HANDLE *h = (GPIO_HANDLE *)v->instance->data;
 
-  ANSELxCLR(h->port) = (1 << h->num);
   if( GET_INT_ARG(1) == 0 ) {
-    // output mode.
-    TRISxCLR(h->port) = (1 << h->num);
+    set_pin_to_digital_output( h->port, h->num );
   } else {
-    // input mode.
-    TRISxSET(h->port) = (1 << h->num);
+    set_pin_to_digital_input( h->port, h->num );
   }
-  CNPUxCLR(h->port) = (1 << h->num);
-  CNPDxCLR(h->port) = (1 << h->num);
 }
 
 
@@ -202,7 +199,7 @@ static void c_pwm_new(mrbc_vm *vm, mrbc_value v[], int argc)
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), "PWM: Invalid pin assignment.");
     return;
   }
-  h->oc_num = set_pin_for_pwm( h->gpio.port, h->gpio.num );
+  h->oc_num = set_pin_to_pwm( h->gpio.port, h->gpio.num );
   if( h->oc_num < 0 ) {
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), "PWM: Can't assign PWM.");
     return;
