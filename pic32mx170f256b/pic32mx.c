@@ -199,10 +199,10 @@ int set_pin_to_pwm( int port, int num )
   @param  unit	SPI unit number
   @param  sdi_p	SDI port such as A=1, B=2...
   @param  sdi_n SDI port number 0..15
-  @param  sdo_p	SDI port
-  @param  sdo_n SDI port number
-  @param  sck_p	SDI port
-  @param  sck_n SDI port number
+  @param  sdo_p	SDO port
+  @param  sdo_n SDO port number
+  @param  sck_p	SCK port
+  @param  sck_n SCK port number
   @return	minus value is error.
 */
 int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n )
