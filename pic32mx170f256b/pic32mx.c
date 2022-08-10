@@ -42,6 +42,82 @@
 #pragma config CP = OFF    // Code Protect->Protection Disabled
 
 
+/*! Input pin selection table.
+
+  see Datasheet DS60001168L
+  TABLE 11-1: INPUT PIN SELECTION
+*/
+static const struct {
+  uint8_t port;
+  uint8_t num;
+} TBL_INPUT_PIN_SELECTION[4][5] = {
+  {
+    { 1, 0 },	// 0000 = RPA0
+    { 2, 3 },	// 0001 = RPB3
+    { 2, 4 },	// 0010 = RPB4
+    { 2,15 },	// 0011 = RPB15
+    { 2, 7 },	// 0100 = RPB7
+  },{
+    { 1, 1 },	// 0000 = RPA1
+    { 2, 5 },	// 0001 = RPB5
+    { 2, 1 },	// 0010 = RPB1
+    { 2,11 },	// 0011 = RPB11
+    { 2, 8 },	// 0100 = RPB8
+  },{
+    { 1, 2 },	// 0000 = RPA2
+    { 2, 6 },	// 0001 = RPB6
+    { 1, 4 },	// 0010 = RPA4
+    { 2,13 },	// 0011 = RPB13
+    { 2, 2 },	// 0100 = RPB2
+  },{
+    { 1, 3 },	// 0000 = RPA3
+    { 2,14 },	// 0001 = RPB14
+    { 2, 0 },	// 0010 = RPB0
+    { 2,10 },	// 0011 = RPB10
+    { 2, 9 },	// 0100 = RPB9
+  }
+};
+static const int NUM_OF_TBL_INPUT_PIN_SELECTION = sizeof(TBL_INPUT_PIN_SELECTION[0]) / sizeof(TBL_INPUT_PIN_SELECTION[0][0]);
+
+
+/*! Output pin selection table.
+
+  see Datasheet DS60001168L
+  TABLE 11-2: OUTPUT PIN SELECTION
+*/
+static const struct {
+  uint8_t port;
+  uint8_t num;
+} TBL_OUTPUT_PIN_SELECTION[4][5] = {
+  {
+    { 1, 0 },	// RPA0
+    { 2, 3 },	// RPB3
+    { 2, 4 },	// RBP4
+    { 2,15 },	// RBP15
+    { 2, 7 },	// RPB7
+  },{
+    { 1, 1 },	// RPA1
+    { 2, 5 },	// RPB5
+    { 2, 1 },	// RPB1
+    { 2,11 },	// RPB11
+    { 2, 8 },	// RPB8
+  },{
+    { 1, 2 },	// RPA2
+    { 2, 6 },	// RPB6
+    { 1, 4 },	// RPA4
+    { 2,13 },	// RPB13
+    { 2, 2 },	// RPB2
+  },{
+    { 1, 3 },	// RPA3
+    { 2,14 },	// RPB14
+    { 2, 0 },	// RPB0
+    { 2,10 },	// RPB10
+    { 2, 9 },	// RPB9
+  }
+};
+static const int NUM_OF_TBL_OUTPUT_PIN_SELECTION = sizeof(TBL_OUTPUT_PIN_SELECTION[0]) / sizeof(TBL_OUTPUT_PIN_SELECTION[0][0]);
+
+
 
 volatile uint32_t *TBL_RPxnR[] = { &RPA0R, &RPB0R, &RPC0R };
 
@@ -196,7 +272,7 @@ int set_pin_to_pwm( int port, int num )
 /*!
   assign the pin to SPI
 
-  @param  unit	SPI unit number
+  @param  unit	SPI unit number 1 or 2
   @param  sdi_p	SDI port such as A=1, B=2...
   @param  sdi_n SDI port number 0..15
   @param  sdo_p	SDO port
@@ -207,43 +283,23 @@ int set_pin_to_pwm( int port, int num )
 */
 int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n )
 {
+  if( unit < 1 || unit > 2 ) return -1;		// error return.
+
   /*
-    Check argument. unit and SDI pin.
-
-    see Datasheet DS60001168L
-         TABLE 11-1: INPUT PIN SELECTION
-   */
-  static const struct {
-    uint8_t unit;	// 1..2
-    uint8_t port;	// A=1, B=2,...
-    uint8_t num;	// 0..15
-    uint8_t sel_val;
-  } TBL_INPUT_PIN_SELECTION[] = {
-    {1, 1,  1, 0x00},	// A1 = 0000
-    {1, 2,  5, 0x01},	// B5 = 0001
-    {1, 2,  1, 0x02},	// B1 = 0010
-    {1, 2, 11, 0x03},	// B11= 0011
-    {1, 2,  8, 0x04},	// B8 = 0100
-
-    {2, 1,  2, 0x00},	// A2 = 0000
-    {2, 2,  6, 0x01},	// B6 = 0001
-    {2, 1,  4, 0x02},	// A4 = 0010
-    {2, 2, 13, 0x03},	// B13= 0011
-    {2, 2,  2, 0x04},	// B2 = 0100
-  };
-  static const int NUM_OF_TBL_INPUT_PIN_SELECTION = sizeof(TBL_INPUT_PIN_SELECTION) / sizeof(TBL_INPUT_PIN_SELECTION[0]);
-
-  int sel_val_SDIxR;
+    Check argument. SDI pin.
+  */
+  static const int TBLIDX_SDI[] = {1, 2};
+  int unit_idx = TBLIDX_SDI[unit-1];
   int i;
   for( i = 0; i < NUM_OF_TBL_INPUT_PIN_SELECTION; i++ ) {
-    if( unit  == TBL_INPUT_PIN_SELECTION[i].unit &&
-	sdi_p == TBL_INPUT_PIN_SELECTION[i].port &&
-	sdi_n == TBL_INPUT_PIN_SELECTION[i].num ) {
-      sel_val_SDIxR = TBL_INPUT_PIN_SELECTION[i].sel_val;
+    if(	sdi_p == TBL_INPUT_PIN_SELECTION[unit-1][i].port &&
+	sdi_n == TBL_INPUT_PIN_SELECTION[unit-1][i].num ) {
       break;
     }
   }
   if( i == NUM_OF_TBL_INPUT_PIN_SELECTION ) return -1;		// error return
+  int set_val_SDIxR = i;
+
 
   /*
     Check argument. SDO pin.
@@ -298,7 +354,7 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
   // assign pins.
   // SDI
   set_pin_to_digital_input( sdi_p, sdi_n );
-  SDIxR(unit) = sel_val_SDIxR;
+  SDIxR(unit) = set_val_SDIxR;
 
   // SDO
   set_pin_to_digital_output( sdo_p, sdo_n );
@@ -306,6 +362,93 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
 
   // SCK
   set_pin_to_digital_output( sck_p, sck_n );
+
+  return 0;
+}
+
+
+/*!
+  assign the pin to UART
+
+  @param  unit	UART unit number 1 or 2
+  @param  txd_p	TxD port such as A=1, B=2...
+  @param  txd_n TxD port number 0..15
+  @param  rxd_p	RxD port
+  @param  rxd_n RxD port number
+  @return	minus value is error.
+*/
+int set_pin_to_uart( int unit, int txd_p, int txd_n, int rxd_p, int rxd_n )
+{
+  if( unit < 1 || unit > 2 ) return -1;		// error return.
+
+  /*
+    Check argument. TxD pin.
+
+    DS60001168L  TABLE 11-2: OUTPUT PIN SELECTION
+  */
+  static const struct {
+    uint8_t group;
+    uint8_t set_val;
+  } TBL_UxTX[/*unit*/] = {
+    { 0, 0x01 },  // 0001 = U1TX
+    { 3, 0x02 },  // 0010 = U2TX
+  };
+
+  int group = TBL_UxTX[unit-1].group;
+  int i;
+  for( i = 0; i < NUM_OF_TBL_OUTPUT_PIN_SELECTION; i++ ) {
+    if( txd_p == TBL_OUTPUT_PIN_SELECTION[group][i].port &&
+	txd_n == TBL_OUTPUT_PIN_SELECTION[group][i].num ) break;
+  }
+  if( i == NUM_OF_TBL_OUTPUT_PIN_SELECTION ) return -2;		// error return
+  // int set_val_RPxnR = TBL_UxTX[unit-1].set_val;
+
+  /*
+    Check argument. RxD pin.
+
+    DS60001168L  TABLE 11-1: INPUT PIN SELECTION
+  */
+  static const uint8_t TBL_UxRX[/*unit*/] = {
+    2,	// U1RX
+    1,	// U2RX
+  };
+
+  group = TBL_UxRX[unit-1];
+  for( i = 0; i < NUM_OF_TBL_INPUT_PIN_SELECTION; i++ ) {
+    if(	rxd_p == TBL_INPUT_PIN_SELECTION[group][i].port &&
+	rxd_n == TBL_INPUT_PIN_SELECTION[group][i].num ) break;
+  }
+  if( i == NUM_OF_TBL_INPUT_PIN_SELECTION ) return -3;		// error return
+
+  /* set output (TxD) pin.
+     (note)
+     Defaults to high level to keep high level when pin assignment is changed.
+  */
+  set_pin_to_digital_output( txd_p, txd_n );
+  LATxSET( txd_p ) = (1 << txd_n);		// set high.
+  RPxnR( txd_p, txd_n ) = TBL_UxTX[unit-1].set_val;
+
+  // set input (RxD) pin.
+  set_pin_to_digital_input( rxd_p, rxd_n );
+  UxRXR(unit) = i;
+
+  return 0;
+}
+
+
+/*!
+  release assign the pin from peripheral.
+
+  @param  port	port such as A=1, B=2...
+  @param  num	number 0..15
+  @return	-1 if error.
+*/
+int release_pin_from_peripheral( int port, int num )
+{
+  if( port < 1 || port > 3 ) return -1;
+  if( num < 0 || num > 15 ) return -1;
+
+  RPxnR( port, num ) = 0;
 
   return 0;
 }

@@ -132,8 +132,8 @@ static unsigned int flash_write_row(void *address, void *data)
 */
 static void u_puts( const void *s )
 {
-  uart_puts(&uart1_handle, s);
-  uart_puts(&uart1_handle, "\r\n");
+  uart_puts(UART_CONSOLE, s);
+  uart_puts(UART_CONSOLE, "\r\n");
 }
 
 
@@ -146,7 +146,7 @@ static int cmd_help(void)
 
   int i;
   for( i = 0; i < sizeof(monitor_commands)/sizeof(struct monitor_commands); i++ ) {
-    uart_puts(&uart1_handle, "  ");
+    uart_puts(UART_CONSOLE, "  ");
     u_puts(monitor_commands[i].command);
   }
   u_puts("+DONE");
@@ -227,7 +227,7 @@ static int cmd_write(void)
   uint8_t *p = memory_pool;
   int n = size;
   while (n > 0) {
-    int readed_size = uart_read( &uart1_handle, p, size );
+    int readed_size = uart_read( UART_CONSOLE, p, size );
     p += readed_size;
     n -= readed_size;
   }
@@ -313,14 +313,14 @@ void add_code(void)
 
   while( 1 ) {
     // get the command string.
-    int len = uart_can_read_line(&uart1_handle);
+    int len = uart_can_read_line(UART_CONSOLE);
     if( !len ) continue;
 
     if( len >= sizeof(buf) ) {
-      uart_clear_rx_buffer(&uart1_handle);
+      uart_clear_rx_buffer(UART_CONSOLE);
       continue;
     }
-    uart_read(&uart1_handle, buf, len);
+    uart_read(UART_CONSOLE, buf, len);
     buf[len] = 0;
 
     // split tokens.

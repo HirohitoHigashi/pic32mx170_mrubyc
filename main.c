@@ -39,7 +39,7 @@ uint8_t memory_pool[MEMORY_SIZE];
   HAL functions.
 */
 int hal_write(int fd, const void *buf, int nbytes) {
-  return uart_write(&uart1_handle, buf, nbytes );
+  return uart_write(UART_CONSOLE, buf, nbytes );
 }
 
 int hal_flush(int fd) {
@@ -57,7 +57,7 @@ void hal_abort( const char *s )
 
 void _mon_putc( char c )
 {
-  uart_write(&uart1_handle, &c, 1);
+  uart_write(UART_CONSOLE, &c, 1);
 }
 
 
@@ -102,7 +102,7 @@ static int check_timeout( void )
     __delay_ms( 30 );
     LATAbits.LATA0 = 0;
     __delay_ms( 30 );
-    if( uart_can_read_line( &uart1_handle ) ) return 1;
+    if( uart_can_read_line( UART_CONSOLE ) ) return 1;
   }
   return 0;
 }

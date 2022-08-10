@@ -47,6 +47,19 @@ extern "C" {
 #define SPIxCON2(x)	*(&SPI1CON2  + (0x200 / sizeof(uint32_t)) * ((x)-1))
 #define SDIxR(x)	*(&SDI1R     + (0x00c / sizeof(uint32_t)) * ((x)-1))
 
+// UART
+#define UxMODE(x)	*(&U1MODE    + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxMODESET(x)	*(&U1MODESET + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxMODECLR(x)	*(&U1MODECLR + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxSTA(x)	*(&U1STA     + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxSTASET(x)	*(&U1STASET  + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxSTACLR(x)	*(&U1STACLR  + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxTXREG(x)	*(&U1TXREG   + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxRXREG(x)	*(&U1RXREG   + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxBRG(x)	*(&U1BRG     + (0x200 / sizeof(uint32_t)) * ((x)-1))
+#define UxRXR(x)	*(&U1RXR     + (0x008 / sizeof(uint32_t)) * ((x)-1))
+
+
 // Output pin selection.
 #define RPxnR(x,n)	(TBL_RPxnR[(x)-1][n])
 extern volatile uint32_t *TBL_RPxnR[];
