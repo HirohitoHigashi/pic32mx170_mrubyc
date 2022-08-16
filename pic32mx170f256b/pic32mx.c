@@ -287,48 +287,54 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
 
   /*
     Check argument. SDI pin.
+    DS60001168L  TABLE 11-1: INPUT PIN SELECTION
   */
-  static const int TBLIDX_SDI[] = {1, 2};
-  int unit_idx = TBLIDX_SDI[unit-1];
+  static const int TBL_SDIx[/*unit*/] = {1, 2};
+  int group = TBL_SDIx[unit-1];
   int i;
   for( i = 0; i < NUM_OF_TBL_INPUT_PIN_SELECTION; i++ ) {
-    if(	sdi_p == TBL_INPUT_PIN_SELECTION[unit-1][i].port &&
-	sdi_n == TBL_INPUT_PIN_SELECTION[unit-1][i].num ) {
+    if(	sdi_p == TBL_INPUT_PIN_SELECTION[group][i].port &&
+	sdi_n == TBL_INPUT_PIN_SELECTION[group][i].num ) {
       break;
     }
   }
   if( i == NUM_OF_TBL_INPUT_PIN_SELECTION ) return -1;		// error return
   int set_val_SDIxR = i;
 
-
   /*
     Check argument. SDO pin.
-
-    see Datasheet DS60001168L
-         TABLE 11-2: OUTPUT PIN SELECTION
+    DS60001168L  TABLE 11-2: OUTPUT PIN SELECTION
   */
   static const struct {
-    uint8_t port;
-    uint8_t num;
-  } TBL_OUTPUT_PIN_SELECTION[] = {
-    { 1,  1 },	// RPA1
-    { 2,  5 },	// RPB5
-    { 2,  1 },	// RPB1
-    { 2, 11 },	// RPB11
-    { 2,  8 },	// RPB8
-    { 1,  2 },	// RPA2
-    { 2,  6 },	// RPB6
-//  { 1,  4 },	// RPA4  confrict UART1 for console
-    { 2, 13 },	// RPB13
-    { 2,  2 },	// RPB2
+    uint8_t unit;
+    uint8_t group;
+    uint8_t set_val;
+  } TBL_SDOx[] = {
+    { 1, 1, 0x03 },
+    { 1, 2, 0x03 },
+    { 2, 1, 0x04 },
+    { 2, 2, 0x04 },
   };
-  static const int NUM_OF_TBL_OUTPUT_PIN_SELECTION = sizeof(TBL_OUTPUT_PIN_SELECTION) / sizeof(TBL_OUTPUT_PIN_SELECTION[0]);
+  static const int NUM_OF_TBL_SDOx = sizeof(TBL_SDOx) / sizeof(TBL_SDOx[0]);
 
-  for( i = 0; i < NUM_OF_TBL_OUTPUT_PIN_SELECTION; i++ ) {
-    if( sdo_p == TBL_OUTPUT_PIN_SELECTION[i].port &&
-	sdo_n == TBL_OUTPUT_PIN_SELECTION[i].num ) break;
+  int set_val_RPxnR = -1;
+
+  for( i = 0; i < NUM_OF_TBL_SDOx; i++ ) {
+    if( TBL_SDOx[i].unit != unit ) continue;
+
+    int group = TBL_SDOx[i].group;
+    int j;
+    for( j = 0; j < NUM_OF_TBL_OUTPUT_PIN_SELECTION; j++ ) {
+      if( sdo_p == TBL_OUTPUT_PIN_SELECTION[group][j].port &&
+	  sdo_n == TBL_OUTPUT_PIN_SELECTION[group][j].num ) {
+	set_val_RPxnR = TBL_SDOx[i].set_val;
+	break;
+      }
+    }
+
+    if( set_val_RPxnR >= 0) break;
   }
-  if( i == NUM_OF_TBL_OUTPUT_PIN_SELECTION ) return -2;		// error return
+  if( i == NUM_OF_TBL_SDOx ) return -2;		// error return
 
   /*
     Check argument. SCK pin.
@@ -358,7 +364,7 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
 
   // SDO
   set_pin_to_digital_output( sdo_p, sdo_n );
-  RPxnR(sdo_p-1, sdo_n) = unit + 2;	// SDO1=0x03 or SDO2=0x04
+  RPxnR(sdo_p, sdo_n) = set_val_RPxnR;
 
   // SCK
   set_pin_to_digital_output( sck_p, sck_n );
@@ -383,7 +389,6 @@ int set_pin_to_uart( int unit, int txd_p, int txd_n, int rxd_p, int rxd_n )
 
   /*
     Check argument. TxD pin.
-
     DS60001168L  TABLE 11-2: OUTPUT PIN SELECTION
   */
   static const struct {
@@ -405,7 +410,6 @@ int set_pin_to_uart( int unit, int txd_p, int txd_n, int rxd_p, int rxd_n )
 
   /*
     Check argument. RxD pin.
-
     DS60001168L  TABLE 11-1: INPUT PIN SELECTION
   */
   static const uint8_t TBL_UxRX[/*unit*/] = {

@@ -31,8 +31,8 @@
 */
 void i2c_init(void)
 {
-  set_pin_to_digital_output( 2, 2 );
-  set_pin_to_digital_output( 2, 3 );
+  set_pin_to_digital_input( 2, 2 );
+  set_pin_to_digital_input( 2, 3 );
 
   CNPUBbits.CNPUB2 = 1;
   CNPUBbits.CNPUB3 = 1;

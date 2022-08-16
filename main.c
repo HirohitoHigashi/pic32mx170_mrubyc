@@ -138,13 +138,14 @@ int main(void)
   /* init mruby/c VM */
   mrbc_init(memory_pool, MEMORY_SIZE);
   mrbc_define_method(0, mrbc_class_object, "pinInit", c_pin_init);
-  mrbc_init_class_adc(0);
-  mrbc_init_class_i2c(0);
-  mrbc_init_class_uart(0);
-  mrbc_init_class_digital(0);
-  mrbc_init_class_pwm(0);
+
   mrbc_init_class_onboard(0);
+  mrbc_init_class_adc(0);
+  mrbc_init_class_digital(0);
+  mrbc_init_class_i2c(0);
+  mrbc_init_class_pwm(0);
   mrbc_init_class_spi(0);
+  mrbc_init_class_uart(0);
 
 
 #if 1
@@ -175,11 +176,5 @@ int main(void)
   /* and run! */
   mrbc_run();
 
-  while(1) {
-    LATAbits.LATA0 = 1;
-    __delay_ms( 10 );
-    LATAbits.LATA0 = 0;
-    __delay_ms( 1000 );
-  }
   return 1;
 }

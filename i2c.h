@@ -26,7 +26,6 @@ extern "C" {
 #endif
 
 /* C codes */
-void i2c_init(void);
 
 /* mruby/c codes */
 void mrbc_init_class_i2c(struct VM *vm);
