@@ -117,16 +117,41 @@ static const struct {
 };
 static const int NUM_OF_TBL_OUTPUT_PIN_SELECTION = sizeof(TBL_OUTPUT_PIN_SELECTION[0]) / sizeof(TBL_OUTPUT_PIN_SELECTION[0][0]);
 
+/*! Remappable registers table.
 
-
+*/
 volatile uint32_t *TBL_RPxnR[] = { &RPA0R, &RPB0R, &RPC0R };
+
+
+/*!
+  Initializes the device to the default states configured.
+*/
+void system_init()
+{
+  pin_init();
+
+  /*
+    Oscillator
+  */
+  // set this if you need.
+
+  /*
+    Interrupt
+  */
+  // Enable the multi vector
+  INTCONbits.MVEC = 1;
+  // Enable Global Interrupts
+  __builtin_mtc0(12,0,(__builtin_mfc0(12,0) | 0x0001));
+}
+
+
 
 
 /*!
   initialize I/O settings.
 
   方針: ハード的に用途が決定しているもの (LED, SW2, UART1) 以外は、
-  　　　全デジタル入力、内部プルダウンとしておく。
+  　　　最も安全と思われる、全デジタル入力、内部プルダウンとしておく。
 */
 void pin_init( void )
 {
@@ -141,8 +166,8 @@ void pin_init( void )
   // Setting the Weak Pull Up and Weak Pull Down SFR(s)
   CNPUA = 0x0000;
   CNPUB = 0x0000 | 0x0080;	// B7: pull-up for SW
-  CNPDA = 0x0000 | 0x000c;	// ignore A0,A1,A4(UART)
-  CNPDB = 0x0000 | 0xff6c;	// ignore B0,B1,B4(UART),B7
+  CNPDA = 0x0000 | 0x000c;	// ignore A0,A1(LED),A4(UART)
+  CNPDB = 0x0000 | 0xff6c;	// ignore B0,B1(LED),B4(UART),B7(SW)
 
   // Setting the Open Drain SFR(s)
   ODCA = 0x0000;
@@ -151,18 +176,6 @@ void pin_init( void )
   // Setting the Analog/Digital Configuration SFR(s)
   ANSELA = 0x0003 & 0x0000;	// all digital.
   ANSELB = 0xF00F & 0x0000;
-}
-
-
-/*!
-  initialize interrupt settings.
-*/
-void interrupt_init( void )
-{
-  // Enable the multi vector
-  INTCONbits.MVEC = 1;
-  // Enable Global Interrupts
-  __builtin_mtc0(12,0,(__builtin_mfc0(12,0) | 0x0001));
 }
 
 

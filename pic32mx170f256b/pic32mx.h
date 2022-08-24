@@ -81,8 +81,8 @@ extern volatile uint32_t *TBL_RPxnR[];
 #define PBCLK (_XTAL_FREQ / 4)
 #endif
 
+void system_init(void);
 void pin_init(void);
-void interrupt_init(void);
 int set_pin_to_digital_input(int port, int num);
 int set_pin_to_digital_output(int port, int num);
 int set_pin_to_analog_input(int port, int num);

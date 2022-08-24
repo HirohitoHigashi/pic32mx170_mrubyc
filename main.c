@@ -123,8 +123,7 @@ static void c_pin_init(mrbc_vm *vm, mrbc_value v[], int argc)
 int main(void)
 {
   /* module init */
-  pin_init();
-  interrupt_init();
+  system_init();
   uart_init();
   tick_timer_init();
 
