@@ -98,9 +98,9 @@ static int check_timeout( void )
 {
   int i;
   for( i = 0; i < 50; i++ ) {
-    LATAbits.LATA0 = 1;
+    onboard_led( 1, 1 );
     __delay_ms( 30 );
-    LATAbits.LATA0 = 0;
+    onboard_led( 1, 0 );
     __delay_ms( 30 );
     if( uart_can_read_line( UART_CONSOLE ) ) return 1;
   }

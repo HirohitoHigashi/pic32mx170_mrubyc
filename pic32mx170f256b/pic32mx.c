@@ -118,13 +118,11 @@ static const struct {
 static const int NUM_OF_TBL_OUTPUT_PIN_SELECTION = sizeof(TBL_OUTPUT_PIN_SELECTION[0]) / sizeof(TBL_OUTPUT_PIN_SELECTION[0][0]);
 
 /*! Remappable registers table.
-
 */
 volatile uint32_t *TBL_RPxnR[] = { &RPA0R, &RPB0R, &RPC0R };
 
 
-/*!
-  Initializes the device to the default states configured.
+/*! Initializes the device to the default states configured.
 */
 void system_init()
 {
@@ -145,10 +143,7 @@ void system_init()
 }
 
 
-
-
-/*!
-  initialize I/O settings.
+/*! initialize I/O settings.
 
   方針: ハード的に用途が決定しているもの (LED, SW2, UART1) 以外は、
   　　　最も安全と思われる、全デジタル入力、内部プルダウンとしておく。
@@ -179,8 +174,7 @@ void pin_init( void )
 }
 
 
-/*!
-  assign the pin to digital input mode
+/*! assign the pin to digital input mode
 
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
@@ -197,8 +191,7 @@ int set_pin_to_digital_input( int port, int num )
 }
 
 
-/*!
-  assign the pin to digital output mode
+/*! assign the pin to digital output mode
 
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
@@ -215,8 +208,7 @@ int set_pin_to_digital_output( int port, int num )
 }
 
 
-/*!
-  assign the pin to analog input mode
+/*! assign the pin to analog input mode
 
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
@@ -246,8 +238,7 @@ int set_pin_to_analog_input( int port, int num )
 }
 
 
-/*!
-  assign the pin to pwm output mode.
+/*! assign the pin to pwm output mode.
 
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
@@ -282,8 +273,7 @@ int set_pin_to_pwm( int port, int num )
 }
 
 
-/*!
-  assign the pin to SPI
+/*! assign the pin to SPI
 
   @param  unit	SPI unit number 1 or 2
   @param  sdi_p	SDI port such as A=1, B=2...
@@ -386,8 +376,7 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
 }
 
 
-/*!
-  assign the pin to UART
+/*! assign the pin to UART
 
   @param  unit	UART unit number 1 or 2
   @param  txd_p	TxD port such as A=1, B=2...
@@ -453,8 +442,7 @@ int set_pin_to_uart( int unit, int txd_p, int txd_n, int rxd_p, int rxd_n )
 }
 
 
-/*!
-  release assign the pin from peripheral.
+/*! release assign the pin from peripheral.
 
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
@@ -468,4 +456,31 @@ int release_pin_from_peripheral( int port, int num )
   RPxnR( port, num ) = 0;
 
   return 0;
+}
+
+
+/*! onboard LED control.
+
+  @param num	LED number. 1 origin.
+  @param on_off	ON or OFF (True or False)
+*/
+void onboard_led( int num, int on_off )
+{
+  switch( num ) {
+  case 1: LATAbits.LATA0 = !!on_off;	break;
+  case 2: LATAbits.LATA1 = !!on_off;	break;
+  case 3: LATBbits.LATB0 = !!on_off;	break;
+  case 4: LATBbits.LATB1 = !!on_off;	break;
+  }
+}
+
+
+/*! onboard SW control.
+
+  @param num	SW number. 1 origin.
+  @return	1 is OFF, 0 is ON.
+*/
+int onboard_sw( int num )
+{
+  return PORTBbits.RB7;
 }

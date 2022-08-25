@@ -65,13 +65,11 @@ int set_gpio_handle( GPIO_HANDLE *h, const mrbc_value *pin )
 static void c_leds_write(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   int led = GET_INT_ARG(1);
-  LATAbits.LATA0 = led & 0x01;
-  led >>= 1;
-  LATAbits.LATA1 = led & 0x01;
-  led >>= 1;
-  LATBbits.LATB0 = led & 0x01;
-  led >>= 1;
-  LATBbits.LATB1 = led & 0x01;
+
+  onboard_led( 1, led & 0x01 );
+  onboard_led( 2, led & 0x02 );
+  onboard_led( 3, led & 0x04 );
+  onboard_led( 4, led & 0x08 );
 }
 
 /*! read the onboard switch
@@ -80,7 +78,7 @@ static void c_leds_write(mrbc_vm *vm, mrbc_value v[], int argc)
 */
 static void c_sw(mrbc_vm *vm, mrbc_value v[], int argc)
 {
-  SET_INT_RETURN( PORTBbits.RB7 );
+  SET_INT_RETURN( onboard_sw(1) );
 }
 
 
