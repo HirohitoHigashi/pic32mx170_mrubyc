@@ -45,14 +45,14 @@ static const mrbc_func_t method_functions_Integer[] = {
   c_integer_chr,
 #endif
 #if MRBC_USE_STRING
-  c_integer_to_s,
+  c_integer_inspect,
 #endif
 #if MRBC_USE_FLOAT
   c_integer_to_f,
 #endif
   c_ineffect,
 #if MRBC_USE_STRING
-  c_integer_to_s,
+  c_integer_inspect,
 #endif
   c_integer_or,
   c_integer_not,

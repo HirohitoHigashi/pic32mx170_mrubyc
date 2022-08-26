@@ -78,7 +78,7 @@ static const mrbc_func_t method_functions_String[] = {
   c_string_to_f,
 #endif
   c_string_to_i,
-  c_ineffect,
+  c_string_to_s,
   c_string_to_sym,
   c_string_tr,
   c_string_tr_self,

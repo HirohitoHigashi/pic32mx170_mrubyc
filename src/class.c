@@ -459,16 +459,20 @@ void c_ineffect(struct VM *vm, mrbc_value v[], int argc)
 int mrbc_run_mrblib(const void *bytecode)
 {
   // instead of mrbc_vm_open()
-  mrbc_vm *vm = mrbc_alloc( 0, sizeof(mrbc_vm) );
+  mrbc_vm *vm = mrbc_vm_new( MAX_REGS_SIZE );
   if( !vm ) return -1;	// ENOMEM
-  memset(vm, 0, sizeof(mrbc_vm));
 
   if( mrbc_load_mrb(vm, bytecode) ) {
     mrbc_print_exception(&vm->exception);
     return 2;
   }
+
+  int ret;
+
   mrbc_vm_begin(vm);
-  int ret = mrbc_vm_run(vm);
+  do {
+    ret = mrbc_vm_run(vm);
+  } while( ret == 0 );
   mrbc_vm_end(vm);
 
   // instead of mrbc_vm_close()

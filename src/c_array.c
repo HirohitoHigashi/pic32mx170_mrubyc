@@ -22,6 +22,7 @@
 /***** Local headers ********************************************************/
 #include "alloc.h"
 #include "value.h"
+#include "symbol.h"
 #include "class.h"
 #include "c_string.h"
 #include "c_array.h"
@@ -502,7 +503,7 @@ mrbc_value mrbc_array_dup(struct VM *vm, const mrbc_value *ary)
 
   @param  vm	pointer to VM.
   @param  src	source
-  @oaram  pos	divide position
+  @param  pos	divide position
   @return	divided array
   @note
     src = [0,1,2,3]
@@ -1021,10 +1022,15 @@ static void c_array_minmax(struct VM *vm, mrbc_value v[], int argc)
 
 #if MRBC_USE_STRING
 //================================================================
-/*! (method) inspect
+/*! (method) inspect, to_s
 */
 static void c_array_inspect(struct VM *vm, mrbc_value v[], int argc)
 {
+  if( v[0].tt == MRBC_TT_CLASS ) {
+    v[0] = mrbc_string_new_cstr(vm, mrbc_symid_to_str( v[0].cls->sym_id ));
+    return;
+  }
+
   mrbc_value ret = mrbc_string_new_cstr(vm, "[");
   if( !ret.string ) goto RETURN_NIL;		// ENOMEM
 

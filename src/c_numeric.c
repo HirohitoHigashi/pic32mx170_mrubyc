@@ -25,6 +25,7 @@
 
 /***** Local headers ********************************************************/
 #include "value.h"
+#include "symbol.h"
 #include "error.h"
 #include "class.h"
 #include "c_string.h"
@@ -220,10 +221,15 @@ static void c_integer_chr(struct VM *vm, mrbc_value v[], int argc)
 
 
 //================================================================
-/*! (method) to_s
+/*! (method) inspect, to_s
 */
-static void c_integer_to_s(struct VM *vm, mrbc_value v[], int argc)
+static void c_integer_inspect(struct VM *vm, mrbc_value v[], int argc)
 {
+  if( v[0].tt == MRBC_TT_CLASS ) {
+    v[0] = mrbc_string_new_cstr(vm, mrbc_symid_to_str( v[0].cls->sym_id ));
+    return;
+  }
+
   int base = 10;
   if( argc ) {
     base = mrbc_integer(v[1]);
@@ -269,8 +275,8 @@ static void c_integer_to_s(struct VM *vm, mrbc_value v[], int argc)
 #endif
 #if MRBC_USE_STRING
   METHOD( "chr",	c_integer_chr )
-  METHOD( "inspect",	c_integer_to_s )
-  METHOD( "to_s",	c_integer_to_s )
+  METHOD( "inspect",	c_integer_inspect )
+  METHOD( "to_s",	c_integer_inspect )
 #endif
 */
 #include "_autogen_class_integer.h"
@@ -340,10 +346,15 @@ static void c_float_to_i(struct VM *vm, mrbc_value v[], int argc)
 
 #if MRBC_USE_STRING
 //================================================================
-/*! (method) to_s
+/*! (method) inspect, to_s
 */
-static void c_float_to_s(struct VM *vm, mrbc_value v[], int argc)
+static void c_float_inspect(struct VM *vm, mrbc_value v[], int argc)
 {
+  if( v[0].tt == MRBC_TT_CLASS ) {
+    v[0] = mrbc_string_new_cstr(vm, mrbc_symid_to_str( v[0].cls->sym_id ));
+    return;
+  }
+
   char buf[16];
 
   snprintf( buf, sizeof(buf), "%g", v->d );
@@ -367,8 +378,8 @@ static void c_float_to_s(struct VM *vm, mrbc_value v[], int argc)
   METHOD( "to_i",	c_float_to_i )
   METHOD( "to_f",	c_ineffect )
 #if MRBC_USE_STRING
-  METHOD( "inspect",	c_float_to_s )
-  METHOD( "to_s",	c_float_to_s )
+  METHOD( "inspect",	c_float_inspect )
+  METHOD( "to_s",	c_float_inspect )
 #endif
 */
 #include "_autogen_class_float.h"
