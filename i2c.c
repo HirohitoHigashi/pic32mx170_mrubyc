@@ -17,6 +17,7 @@
 
 #include <xc.h>
 #include "pic32mx.h"
+#include "pic32mx_common.h"
 #include "i2c.h"
 #include "mrubyc.h"
 

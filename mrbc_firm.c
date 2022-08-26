@@ -18,6 +18,8 @@
 #include <xc.h>
 #include <stdio.h>
 #include <stdint.h>
+
+#include "pic32mx_common.h"
 #include "mrbc_firm.h"
 #include "uart.h"
 
@@ -280,7 +282,7 @@ static int cmd_showprog(void)
   char buf[32];
 
   u_puts("idx   size");
-  while( strncmp( fl_addr, RITE, sizeof(RITE)) == 0 ) {
+  while( strncmp( (const char *)fl_addr, RITE, sizeof(RITE)) == 0 ) {
     uint32_t size = 0;
     int i;
     for( i = 0; i < 4; i++ ) {

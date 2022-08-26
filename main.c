@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "pic32mx.h"
+#include "pic32mx_common.h"
 #include "adc.h"
 #include "digital.h"
 #include "i2c.h"
@@ -150,7 +151,7 @@ int main(void)
 #if 1
   const uint8_t *fl_addr = (uint8_t*)FLASH_SAVE_ADDR;
   static const char RITE[4] = "RITE";
-  while( strncmp( fl_addr, RITE, sizeof(RITE)) == 0 ) {
+  while( strncmp( (const char *)fl_addr, RITE, sizeof(RITE)) == 0 ) {
     mrbc_create_task(fl_addr, 0);
 
     // get a next irep.
