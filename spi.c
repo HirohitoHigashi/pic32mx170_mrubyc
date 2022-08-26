@@ -26,6 +26,8 @@ static int spi_set_frequency( int unit, int freq )
   uint32_t brg = (uint32_t)PBCLK / 2 / freq - 1;
   if( brg >= 0x2000 ) return -1;
   SPIxBRG(unit) = brg;
+
+  return 0;
 }
 
 
@@ -37,6 +39,7 @@ static int spi_transfer( int unit, const void *send_buf, int send_size,
   }
   while( !(SPIxSTAT(unit) & _SPI1STAT_SPIRBE_MASK) ) {
     int dummy = SPIxBUF(unit);
+    (void)dummy;	// avoid warning.
   }
 
   const uint8_t *p_send = send_buf;
