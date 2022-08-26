@@ -177,16 +177,16 @@ void uart_enable( const UART_HANDLE *uh, int en_dis )
   if( en_dis ) {
     // enable UART
     uh->interrupt_enable( 1 );	// Enable Rx interrupt.
-    UxSTASET(uh->unit_num) = (_U1ASTA_UTXEN_MASK | _U1ASTA_URXEN_MASK);
+    UxSTASET(uh->unit_num) = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK);
     UxMODESET(uh->unit_num) = _U1MODE_ON_MASK;
 
   } else {
     // disable
-    while( (UxSTA(uh->unit_num) & _U1ASTA_TRMT_MASK) == 0 )
+    while( (UxSTA(uh->unit_num) & _U1STA_TRMT_MASK) == 0 )
       ;
     uh->interrupt_enable( 0 );
     UxMODECLR(uh->unit_num) = _U1MODE_ON_MASK;
-    UxSTACLR(uh->unit_num) = (_U1ASTA_UTXEN_MASK | _U1ASTA_URXEN_MASK);
+    UxSTACLR(uh->unit_num) = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK);
   }
 }
 

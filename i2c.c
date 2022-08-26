@@ -51,7 +51,7 @@ void i2c_init(void)
 */
 static int i2c_start(void)
 {
-  I2C2CONSET = (1 << _I2C2ACON_SEN_POSITION);
+  I2C2CONSET = (1 << _I2C2CON_SEN_POSITION);
 
   // Normally loops about 20 times at clock 40MHz.
   // thus, for safety 2000 loops.
@@ -70,7 +70,7 @@ static int i2c_start(void)
 */
 static int i2c_restart(void)
 {
-  I2C2CONSET = (1 << _I2C2ACON_RSEN_POSITION);
+  I2C2CONSET = (1 << _I2C2CON_RSEN_POSITION);
 
   int i;
   for( i = 0; i < 3000; i++ ) {
