@@ -59,10 +59,6 @@ extern "C" {
 #define UxBRG(x)	*(&U1BRG     + (0x200 / sizeof(uint32_t)) * ((x)-1))
 #define UxRXR(x)	*(&U1RXR     + (0x008 / sizeof(uint32_t)) * ((x)-1))
 
-// Output pin selection.
-#define RPxnR(x,n)	(TBL_RPxnR[(x)-1][n])
-extern volatile uint32_t *TBL_RPxnR[];
-
 // UART IFS,IEC,IPC
 #define IFS_U1RXIF_read()	(IFS1bits.U1RXIF)
 #define IFS_U2RXIF_read()	(IFS1bits.U2RXIF)
@@ -72,6 +68,15 @@ extern volatile uint32_t *TBL_RPxnR[];
 #define IEC_U2RXIE_set(f)	(IEC1bits.U2RXIE = (f))
 #define IPC_U1IPIS_set(ip,is)	(IPC8bits.U1IP = (ip), IPC8bits.U1IS = (is))
 #define IPC_U2IPIS_set(ip,is)	(IPC9bits.U2IP = (ip), IPC9bits.U2IS = (is))
+
+// TIMER IFS,IEC,IPC
+#define IFS_T1IF_clear()	(IFS0CLR= 1 << _IFS0_T1IF_POSITION)
+#define IEC_T1IE_set(f)		(IEC0bits.T1IE = (f))
+#define IPC_T1IPIS(ip,is)	(IPC1bits.T1IP = (ip), IPC1bits.T1IS = (is))
+
+// Output pin selection.
+#define RPxnR(x,n)	(TBL_RPxnR[(x)-1][n])
+extern volatile uint32_t *TBL_RPxnR[];
 
 //! flash memory address and parameter.
 #define FLASH_SAVE_ADDR 0xBD032000

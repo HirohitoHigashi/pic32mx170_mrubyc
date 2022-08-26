@@ -76,10 +76,10 @@ static void tick_timer_init( void )
   TMR1 = 0;
   PR1 = PBCLK / 1000;
 
-  IFS0CLR= 1 << _IFS0_T1IF_POSITION;	// Clear interrupt.
-  IPC1bits.T1IP = 1;	// Interrupt priority.
-  IPC1bits.T1IS = 0;
-  IEC0bits.T1IE = 1;	// Enable interrupt
+  IFS_T1IF_clear();
+  IPC_T1IPIS( 1, 0 );	// Interrupt priority.
+  IEC_T1IE_set( 1 );	// Enable interrupt
+
   T1CONbits.ON = 1;
 }
 
@@ -87,7 +87,7 @@ static void tick_timer_init( void )
 void __ISR(_TIMER_1_VECTOR, IPL1AUTO) timer1_isr( void )
 {
   mrbc_tick();
-  IFS0CLR = (1 << _IFS0_T1IF_POSITION);
+  IFS_T1IF_clear();
 }
 
 
