@@ -37,11 +37,11 @@ static void uart_push_rxfifo( UART_HANDLE *uh, uint8_t ch );
 */
 void __ISR(_UART_1_VECTOR, IPL4AUTO) uart1_isr( void )
 {
-  if( IFS1bits.U1RXIF ) {
+  if( IFS_U1RXIF_read() ) {
     do {
       uart_push_rxfifo( &uart_handle_[0], U1RXREG );
     } while( U1STAbits.URXDA );
-    IFS1CLR = (1 << _IFS1_U1RXIF_POSITION);
+    IFS_U1RXIF_clear();
   }
 
   if( U1STAbits.FERR ) {
@@ -57,11 +57,11 @@ void __ISR(_UART_1_VECTOR, IPL4AUTO) uart1_isr( void )
 */
 void __ISR(_UART_2_VECTOR, IPL4AUTO) uart2_isr( void )
 {
-  if( IFS1bits.U2RXIF ) {
+  if( IFS_U2RXIF_read() ) {
     do {
       uart_push_rxfifo( &uart_handle_[1], U2RXREG );
     } while( U2STAbits.URXDA );
-    IFS1CLR = (1 << _IFS1_U2RXIF_POSITION);
+    IFS_U2RXIF_clear();
   }
 
   if( U2STAbits.FERR ) {
@@ -97,18 +97,14 @@ static void uart_push_rxfifo( UART_HANDLE *uh, uint8_t ch )
 
 
 //================================================================
-/*! UART1 enable or disable interrupt.
+/*! UART enable or disable interrupt.
 */
-static void interrupt_enable_uart1( int en_dis )
+static void uart_interrupt_enable( const UART_HANDLE *uh, int en_dis )
 {
-  IEC1bits.U1RXIE = !!en_dis;
-}
-
-/*! UART2 enable or disable interrupt.
-*/
-static void interrupt_enable_uart2( int en_dis )
-{
-  IEC1bits.U2RXIE = !!en_dis;
+  switch( uh->unit_num ) {
+  case 1: IEC_U1RXIE_set( en_dis );
+  case 2: IEC_U2RXIE_set( en_dis );
+  }
 }
 
 
@@ -125,7 +121,6 @@ void uart_init(void)
   uart_handle_[0].rxd_pin = (GPIO_HANDLE){ 1, 4 };
   uart_handle_[0].unit_num = 1;
   uart_handle_[0].delimiter = '\n';
-  uart_handle_[0].interrupt_enable = interrupt_enable_uart1;
 
   // UART1 parameter.
   U1MODE = 0x0008;
@@ -135,12 +130,11 @@ void uart_init(void)
 		   uart_handle_[0].txd_pin.port, uart_handle_[0].txd_pin.num,
 		   uart_handle_[0].rxd_pin.port, uart_handle_[0].rxd_pin.num );
 
-  // interrupt.
-  IPC8bits.U1IP = 4;		// interrupt level
-  IPC8bits.U1IS = 3;
+  // interrupt level.
+  IPC_U1IPIS_set( 4, 3 );
 
   // Enabling UART1
-  uart_enable( &uart_handle_[0], 1 );
+  uart_enable( &uart_handle_[0] );
 
   /* UART2
       TxD: RPB9(18pin) = Pin14
@@ -150,7 +144,6 @@ void uart_init(void)
   uart_handle_[1].rxd_pin = (GPIO_HANDLE){ 2, 8 };
   uart_handle_[1].unit_num = 2;
   uart_handle_[1].delimiter = '\n';
-  uart_handle_[1].interrupt_enable = interrupt_enable_uart2;
 
   // UART2 parameter.
   U2MODE = 0x0008;
@@ -160,41 +153,42 @@ void uart_init(void)
 		   uart_handle_[1].txd_pin.port, uart_handle_[1].txd_pin.num,
 		   uart_handle_[1].rxd_pin.port, uart_handle_[1].rxd_pin.num );
 
-  // interrupt.
-  IPC9bits.U2IP = 4;		// interrupt level
-  IPC9bits.U2IS = 3;
+  // interrupt level.
+  IPC_U2IPIS_set( 4, 3 );
 
   // Enabling UART2
-  uart_enable( &uart_handle_[1], 1 );
+  uart_enable( &uart_handle_[1] );
 }
 
 
 //================================================================
-/*! enable or disable uart
+/*! enable uart
 */
-void uart_enable( const UART_HANDLE *uh, int en_dis )
+void uart_enable( const UART_HANDLE *uh )
 {
-  if( en_dis ) {
-    // enable UART
-    uh->interrupt_enable( 1 );	// Enable Rx interrupt.
-    UxSTASET(uh->unit_num) = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK);
-    UxMODESET(uh->unit_num) = _U1MODE_ON_MASK;
+  uart_interrupt_enable( uh, 1 );
+  UxSTASET(uh->unit_num) = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK);
+  UxMODESET(uh->unit_num) = _U1MODE_ON_MASK;
+}
 
-  } else {
-    // disable
-    while( (UxSTA(uh->unit_num) & _U1STA_TRMT_MASK) == 0 )
-      ;
-    uh->interrupt_enable( 0 );
-    UxMODECLR(uh->unit_num) = _U1MODE_ON_MASK;
-    UxSTACLR(uh->unit_num) = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK);
-  }
+
+//================================================================
+/*! disable uart
+*/
+void uart_disable( const UART_HANDLE *uh )
+{
+  while( (UxSTA(uh->unit_num) & _U1STA_TRMT_MASK) == 0 )
+    ;
+  uart_interrupt_enable( uh, 0 );
+  UxMODECLR(uh->unit_num) = _U1MODE_ON_MASK;
+  UxSTACLR(uh->unit_num) = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK);
 }
 
 
 //================================================================
 /*! set modem parameter
 */
-int uart_set_modem_params( UART_HANDLE *uh, int baud, int parity, int stop_bits )
+int uart_set_modem_params( const UART_HANDLE *uh, int baud, int parity, int stop_bits )
 {
   if( baud >= 0 ) {
     /* データシート掲載計算式
@@ -236,7 +230,7 @@ int uart_set_modem_params( UART_HANDLE *uh, int baud, int parity, int stop_bits 
 */
 void uart_clear_rx_buffer( UART_HANDLE *uh )
 {
-  uh->interrupt_enable( 0 );	// Disable Rx interrupt
+  uart_interrupt_enable( uh, 0 );	// Disable Rx interrupt
 
   while( UxSTA(uh->unit_num) & _U1STA_URXDA_MASK ) {
     volatile uint8_t ch = UxRXREG(uh->unit_num); (void)ch;
@@ -245,7 +239,7 @@ void uart_clear_rx_buffer( UART_HANDLE *uh )
   uh->rx_wr = 0;
   uh->rx_overflow = 0;
 
-  uh->interrupt_enable( 1 );	// Enable Rx interrupt.
+  uart_interrupt_enable( uh, 1 );	// Enable Rx interrupt.
 }
 
 
@@ -287,7 +281,7 @@ int uart_write( UART_HANDLE *uh, const void *buffer, int size )
 
   @note			If no data received, it blocks execution.
 */
-int uart_read( UART_HANDLE *uh, void *buffer, size_t size )
+int uart_read( UART_HANDLE *uh, void *buffer, int size )
 {
   if( size == 0 ) return 0;
 
@@ -408,9 +402,9 @@ static void c_uart_new(mrbc_vm *vm, mrbc_value v[], int argc)
   // set baudrate.
   if( baud > 0 ) {
     UART_HANDLE *uh = *(UART_HANDLE **)val.instance->data;
-    uart_enable( uh, 0 );
+    uart_disable( uh );
     uart_set_modem_params( uh, baud, -1, -1 );
-    uart_enable( uh, 1 );
+    uart_enable( uh );
   }
 
   SET_RETURN( val );
@@ -487,7 +481,7 @@ static void c_uart_set_modem_params(mrbc_vm *vm, mrbc_value v[], int argc)
   }
 
   // set to UART
-  uart_enable( uh, 0 );	// temporary disable.
+  uart_disable( uh );
   uart_set_modem_params( uh, baud, parity, stop_bits );
   if( flag_txd_rxd ) {
     release_pin_from_peripheral( now_txd_pin.port, now_txd_pin.num );
@@ -495,7 +489,7 @@ static void c_uart_set_modem_params(mrbc_vm *vm, mrbc_value v[], int argc)
 		 uh->txd_pin.port, uh->txd_pin.num,
 		 uh->rxd_pin.port, uh->rxd_pin.num ) < 0 ) goto ERROR_PARAM;
   }
-  uart_enable( uh, 1 );
+  uart_enable( uh );
   SET_TRUE_RETURN();
   return;
 
