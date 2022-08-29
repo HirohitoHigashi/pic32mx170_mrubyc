@@ -42,6 +42,9 @@
 #pragma config CP = OFF    // Code Protect->Protection Disabled
 
 
+#define NUM_OF(a)	(sizeof(a) / sizeof(a[0]))
+
+
 /*! Input pin selection table.
 
   see Datasheet DS60001168L
@@ -50,7 +53,7 @@
 static const struct {
   uint8_t port;
   uint8_t num;
-} TBL_INPUT_PIN_SELECTION[4][5] = {
+} TBL_INPUT_PIN_SELECTION[/*group*/][5] = {
   {
     { 1, 0 },	// 0000 = RPA0
     { 2, 3 },	// 0001 = RPB3
@@ -77,7 +80,6 @@ static const struct {
     { 2, 9 },	// 0100 = RPB9
   }
 };
-static const int NUM_OF_TBL_INPUT_PIN_SELECTION = sizeof(TBL_INPUT_PIN_SELECTION[0]) / sizeof(TBL_INPUT_PIN_SELECTION[0][0]);
 
 
 /*! Output pin selection table.
@@ -88,7 +90,7 @@ static const int NUM_OF_TBL_INPUT_PIN_SELECTION = sizeof(TBL_INPUT_PIN_SELECTION
 static const struct {
   uint8_t port;
   uint8_t num;
-} TBL_OUTPUT_PIN_SELECTION[4][5] = {
+} TBL_OUTPUT_PIN_SELECTION[/*group*/][5] = {
   {
     { 1, 0 },	// RPA0
     { 2, 3 },	// RPB3
@@ -115,11 +117,69 @@ static const struct {
     { 2, 9 },	// RPB9
   }
 };
-static const int NUM_OF_TBL_OUTPUT_PIN_SELECTION = sizeof(TBL_OUTPUT_PIN_SELECTION[0]) / sizeof(TBL_OUTPUT_PIN_SELECTION[0][0]);
+
+
+/*! Output pin selection table lookup data structure
+ */
+struct OUTPUT_PIN_SELECTION_T {
+  uint8_t unit;
+  uint8_t group;
+  uint8_t set_val;
+};
+
 
 /*! Remappable registers table.
 */
 volatile uint32_t *TBL_RPxnR[] = { &RPA0R, &RPB0R, &RPC0R };
+
+
+
+/*! lookup the input pin selection table.
+
+  @param  port		port such as A=1, B=2...
+  @param  num		number 0..15
+  @param  group		input pin group
+  @return		index of TBL_INPUT_PIN_SELECTION if found.
+			-1 is error.
+*/
+static int lookup_input_pin_table( int port, int num, int group )
+{
+  int i;
+  for( i = 0; i < NUM_OF(TBL_INPUT_PIN_SELECTION[0]); i++ ) {
+    if(	port == TBL_INPUT_PIN_SELECTION[group][i].port &&
+	num  == TBL_INPUT_PIN_SELECTION[group][i].num ) return i;
+  }
+
+  return -1;
+}
+
+
+/*! lookup the output pin selection table.
+
+  @param  unit		unit number. or -1 is auto select.
+  @param  port		port such as A=1, B=2...
+  @param  num		number 0..15
+  @param  tbl_peripheral peripheral data table
+  @param  tbl_size	table size
+  @return		index of tbl_peripheral if found.
+			-1 is error.
+*/
+static int lookup_output_pin_table( int unit, int port, int num, const struct OUTPUT_PIN_SELECTION_T *tbl_peripheral, int tbl_size )
+{
+  int i;
+  for( i = 0; i < tbl_size; i ++ ) {
+    if( unit > 0 && tbl_peripheral[i].unit != unit ) continue;
+
+    int group = tbl_peripheral[i].group;
+    int j;
+    for( j = 0; j < NUM_OF(TBL_OUTPUT_PIN_SELECTION[0]); j++ ) {
+      if( port == TBL_OUTPUT_PIN_SELECTION[group][j].port &&
+	  num  == TBL_OUTPUT_PIN_SELECTION[group][j].num ) return i;
+    }
+  }
+
+  return -1;
+}
 
 
 /*! Initializes the device to the default states configured.
@@ -159,18 +219,19 @@ void pin_init( void )
   TRISB = 0xFFFF & 0xfffc;	// B1,0:out for LED
 
   // Setting the Weak Pull Up and Weak Pull Down SFR(s)
+  CNPDA = 0x000c;	// ignore A0,A1(LED),A4(UART)
+  CNPDB = 0xff6c;	// ignore B0,B1(LED),B4(UART),B7(SW)
+
   CNPUA = 0x0000;
-  CNPUB = 0x0000 | 0x0080;	// B7: pull-up for SW
-  CNPDA = 0x0000 | 0x000c;	// ignore A0,A1(LED),A4(UART)
-  CNPDB = 0x0000 | 0xff6c;	// ignore B0,B1(LED),B4(UART),B7(SW)
+  CNPUB = 0x0080;	// B7: pull-up for SW
 
   // Setting the Open Drain SFR(s)
   ODCA = 0x0000;
   ODCB = 0x0000;
 
   // Setting the Analog/Digital Configuration SFR(s)
-  ANSELA = 0x0003 & 0x0000;	// all digital.
-  ANSELB = 0xF00F & 0x0000;
+  ANSELA = 0x0000;	// all digital.
+  ANSELB = 0x0000;
 }
 
 
@@ -219,57 +280,69 @@ int set_pin_to_analog_input( int port, int num )
   /* Output pin to  number selection
      see Datasheet DS60001168L  TABLE 3
    */
-  static const int8_t TBL_AN[3][16] = {
-    /*      num   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 */
-    /* PortA */ { 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-    /* PortB */ { 2, 3, 4, 5,-1,-1,-1,-1,-1,-1,-1,-1,12,11,10, 9},
-    /* PortC */ {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
+  static const struct {
+    uint8_t port;
+    uint8_t num;
+  } TBL_ANxx[] = {
+    { 1, 0 },	// AN0 = RA0
+    { 1, 1 },	// AN1 = RA1
+    { 2, 0 },	// AN2 = RB0
+    { 2, 1 },	// AN3 = RB1
+    { 2, 2 },	// AN4 = RB2
+    { 2, 3 },	// AN5 = RB3
+    { 0, 0 },	// AN6
+    { 0, 0 },	// AN7
+    { 0, 0 },	// AN8
+    { 2,15 },	// AN9 = RB15
+    { 2,14 },	// AN10 = RB14
+    { 2,13 },	// AN11 = RB13
+    { 2,12 },	// AN12 = RB12
   };
 
-  int ch = TBL_AN[ port-1 ][ num ];
-  if( ch < 0 ) return ch;
+  int i;
+  for( i = 0; i < NUM_OF(TBL_ANxx); i++ ) {
+    if( port == TBL_ANxx[i].port && num == TBL_ANxx[i].num ) break;
+  }
+  if( i == NUM_OF(TBL_ANxx) ) return -1;	// error return
 
   ANSELxSET(port) = (1 << num);
   TRISxSET(port) = (1 << num);
   CNPUxCLR(port) = (1 << num);
   CNPDxCLR(port) = (1 << num);
 
-  return ch;
+  return i;
 }
 
 
 /*! assign the pin to pwm output mode.
 
+  @param  unit  OC(PWM) unit number or -1 is auto select.
   @param  port	port such as A=1, B=2...
   @param  num	number 0..15
   @return	OC(PWM) unit number or -1 is error.
 */
-int set_pin_to_pwm( int port, int num )
+int set_pin_to_pwm( int unit, int port, int num )
 {
-  /* Output pin to OC number selection
-
-     see Datasheet DS60001168L
-         TABLE 11-2: OUTPUT PIN SELECTION
-   */
-  static const int8_t TBL_OC[3][16] = {
-    /*      num  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 */
-    /* PortA */ {1, 2, 4, 3, 4,-1,-1,-1, 2, 2,-1,-1,-1,-1,-1,-1},
-    /* PortB */ {3, 2, 4, 1, 1, 2, 4, 1, 2, 3, 3, 2,-1, 4, 3, 1},
-    /* PortC */ {1, 4, 3, 4, 3, 1, 4, 1, 2, 3,-1,-1,-1,-1,-1,-1},
+  /*! Output pin selection table.
+    DS60001168L  TABLE 11-2: OUTPUT PIN SELECTION
+  */
+  static const struct OUTPUT_PIN_SELECTION_T TBL_OCx[] = {
+//  unit group
+    { 1, 0, 0x05 },	// 0101 = OC1
+    { 2, 1, 0x05 },	// 0101 = OC2
+    { 4, 2, 0x05 },	// 0101 = OC4
+    { 5, 2, 0x06 },	// 0110 = OC5
+    { 3, 3, 0x05 },	// 0101 = OC3
   };
 
-  if( port < 1 || port > 3 ) return -1;
-  if( num > 15 ) return -1;
-
-  int oc_num = TBL_OC[ port-1 ][ num ];
+  int idx = lookup_output_pin_table( unit, port, num, TBL_OCx, NUM_OF(TBL_OCx));
+  if( idx < 0 ) return -1;
 
   // set pin to output mode and assign to pwm.
   set_pin_to_digital_output( port, num );
+  RPxnR(port, num) = TBL_OCx[idx].set_val;
 
-  static const uint8_t OC_NUM[] = {5, 5, 5, 5, 6};
-  RPxnR(port, num) = OC_NUM[ oc_num-1 ];
-
-  return oc_num;
+  return TBL_OCx[idx].unit;
 }
 
 
@@ -292,55 +365,34 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
     Check argument. SDI pin.
     DS60001168L  TABLE 11-1: INPUT PIN SELECTION
   */
-  static const int TBL_SDIx[/*unit*/] = {1, 2};
-  int group = TBL_SDIx[unit-1];
-  int i;
-  for( i = 0; i < NUM_OF_TBL_INPUT_PIN_SELECTION; i++ ) {
-    if(	sdi_p == TBL_INPUT_PIN_SELECTION[group][i].port &&
-	sdi_n == TBL_INPUT_PIN_SELECTION[group][i].num ) {
-      break;
-    }
-  }
-  if( i == NUM_OF_TBL_INPUT_PIN_SELECTION ) return -1;		// error return
-  int set_val_SDIxR = i;
+  static const uint8_t TBL_SDIx[/*unit*/] = {
+// group
+    1,	// SDI1
+    2,	// SDI2
+  };
+  int idx = lookup_input_pin_table( sdi_p, sdi_n, TBL_SDIx[unit-1] );
+  if( idx < 0 ) return -2;			// error return
+  int set_val_SDIxR = idx;
 
   /*
     Check argument. SDO pin.
     DS60001168L  TABLE 11-2: OUTPUT PIN SELECTION
   */
-  static const struct {
-    uint8_t unit;
-    uint8_t group;
-    uint8_t set_val;
-  } TBL_SDOx[] = {
-    { 1, 1, 0x03 },
-    { 1, 2, 0x03 },
-    { 2, 1, 0x04 },
-    { 2, 2, 0x04 },
+  static const struct OUTPUT_PIN_SELECTION_T TBL_SDOx[] = {
+//  unit group
+    { 1, 1, 0x03 },	// 0011 = SDO1
+    { 2, 1, 0x04 },	// 0100 = SDO2
+    { 1, 2, 0x03 },	// 0011 = SDO1
+    { 2, 2, 0x04 },	// 0100 = SDO2
   };
-  static const int NUM_OF_TBL_SDOx = sizeof(TBL_SDOx) / sizeof(TBL_SDOx[0]);
-
-  int set_val_RPxnR = -1;
-
-  for( i = 0; i < NUM_OF_TBL_SDOx; i++ ) {
-    if( TBL_SDOx[i].unit != unit ) continue;
-
-    int group = TBL_SDOx[i].group;
-    int j;
-    for( j = 0; j < NUM_OF_TBL_OUTPUT_PIN_SELECTION; j++ ) {
-      if( sdo_p == TBL_OUTPUT_PIN_SELECTION[group][j].port &&
-	  sdo_n == TBL_OUTPUT_PIN_SELECTION[group][j].num ) {
-	set_val_RPxnR = TBL_SDOx[i].set_val;
-	break;
-      }
-    }
-
-    if( set_val_RPxnR >= 0) break;
-  }
-  if( i == NUM_OF_TBL_SDOx ) return -2;		// error return
+  idx = lookup_output_pin_table( unit, sdo_p, sdo_n, TBL_SDOx, NUM_OF(TBL_SDOx));
+  if( idx < 0 ) return -3;			// error return
+  int set_val_RPxnR = TBL_SDOx[idx].set_val;
 
   /*
     Check argument. SCK pin.
+    (note)
+     SCK pin cannot be remap. check only.
   */
   static const struct {
     uint8_t unit;
@@ -350,15 +402,13 @@ int set_pin_to_spi( int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sc
     { 1, 2, 14 },  // SPI1: B14
     { 2, 2, 15 },  // SPI2: B15
   };
-  static const int NUM_OF_TBL_SCK_PIN_SELECTION = sizeof(TBL_SCK_PIN_SELECTION) / sizeof(TBL_SCK_PIN_SELECTION[0]);
-
-  for( i = 0; i < NUM_OF_TBL_SCK_PIN_SELECTION; i++ ) {
+  int i;
+  for( i = 0; i < NUM_OF(TBL_SCK_PIN_SELECTION); i++ ) {
     if( unit  == TBL_SCK_PIN_SELECTION[i].unit &&
 	sck_p == TBL_SCK_PIN_SELECTION[i].port &&
 	sck_n == TBL_SCK_PIN_SELECTION[i].num ) break;
   }
-  if( i == NUM_OF_TBL_SCK_PIN_SELECTION ) return -3;		// error return
-
+  if( i == NUM_OF(TBL_SCK_PIN_SELECTION) ) return -4;	// error return
 
   // assign pins.
   // SDI
@@ -393,38 +443,27 @@ int set_pin_to_uart( int unit, int txd_p, int txd_n, int rxd_p, int rxd_n )
     Check argument. TxD pin.
     DS60001168L  TABLE 11-2: OUTPUT PIN SELECTION
   */
-  static const struct {
-    uint8_t group;
-    uint8_t set_val;
-  } TBL_UxTX[/*unit*/] = {
-    { 0, 0x01 },  // 0001 = U1TX
-    { 3, 0x02 },  // 0010 = U2TX
+  static const struct OUTPUT_PIN_SELECTION_T TBL_UxTX[] = {
+//  unit group
+    { 1, 0, 0x01 },	// 0001 = U1TX
+    { 2, 3, 0x02 },	// 0010 = U2TX
   };
-
-  int group = TBL_UxTX[unit-1].group;
-  int i;
-  for( i = 0; i < NUM_OF_TBL_OUTPUT_PIN_SELECTION; i++ ) {
-    if( txd_p == TBL_OUTPUT_PIN_SELECTION[group][i].port &&
-	txd_n == TBL_OUTPUT_PIN_SELECTION[group][i].num ) break;
-  }
-  if( i == NUM_OF_TBL_OUTPUT_PIN_SELECTION ) return -2;		// error return
-  // int set_val_RPxnR = TBL_UxTX[unit-1].set_val;
+  int idx = lookup_output_pin_table( unit, txd_p, txd_n, TBL_UxTX, NUM_OF(TBL_UxTX));
+  if( idx < 0 ) return -2;					// error return
+  int set_val_RPxnR = TBL_UxTX[idx].set_val;
 
   /*
     Check argument. RxD pin.
     DS60001168L  TABLE 11-1: INPUT PIN SELECTION
   */
   static const uint8_t TBL_UxRX[/*unit*/] = {
+// group
     2,	// U1RX
     1,	// U2RX
   };
-
-  group = TBL_UxRX[unit-1];
-  for( i = 0; i < NUM_OF_TBL_INPUT_PIN_SELECTION; i++ ) {
-    if(	rxd_p == TBL_INPUT_PIN_SELECTION[group][i].port &&
-	rxd_n == TBL_INPUT_PIN_SELECTION[group][i].num ) break;
-  }
-  if( i == NUM_OF_TBL_INPUT_PIN_SELECTION ) return -3;		// error return
+  idx = lookup_input_pin_table( rxd_p, rxd_n, TBL_UxRX[unit-1] );
+  if( idx < 0 ) return -3;
+  int set_val_UxRXR = idx;
 
   /* set output (TxD) pin.
      (note)
@@ -432,11 +471,11 @@ int set_pin_to_uart( int unit, int txd_p, int txd_n, int rxd_p, int rxd_n )
   */
   set_pin_to_digital_output( txd_p, txd_n );
   LATxSET( txd_p ) = (1 << txd_n);		// set high.
-  RPxnR( txd_p, txd_n ) = TBL_UxTX[unit-1].set_val;
+  RPxnR( txd_p, txd_n ) = set_val_RPxnR;
 
   // set input (RxD) pin.
   set_pin_to_digital_input( rxd_p, rxd_n );
-  UxRXR(unit) = i;
+  UxRXR(unit) = set_val_UxRXR;
 
   return 0;
 }

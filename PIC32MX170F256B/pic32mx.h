@@ -2,7 +2,6 @@
   CPU related params.
 */
 
-
 #if !defined(__32MX170F256B__) && !defined(__PIC32MX170F256B__)
 # error "Change the project property, xc32-gcc Include directories to the MPU you want to use."
 #endif
@@ -99,12 +98,13 @@ void pin_init(void);
 int set_pin_to_digital_input(int port, int num);
 int set_pin_to_digital_output(int port, int num);
 int set_pin_to_analog_input(int port, int num);
-int set_pin_to_pwm(int port, int num);
+int set_pin_to_pwm(int unit, int port, int num);
 int set_pin_to_spi(int unit, int sdi_p, int sdi_n, int sdo_p, int sdo_n, int sck_p, int sck_n);
 int set_pin_to_uart(int unit, int txd_p, int txd_n, int rxd_p, int rxd_n);
 int release_pin_from_peripheral(int port, int num);
 void onboard_led(int num, int on_off);
 int onboard_sw(int num);
+
 
 #ifdef __cplusplus
 }

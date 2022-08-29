@@ -197,7 +197,7 @@ static void c_pwm_new(mrbc_vm *vm, mrbc_value v[], int argc)
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), "PWM: Invalid pin assignment.");
     return;
   }
-  h->oc_num = set_pin_to_pwm( h->gpio.port, h->gpio.num );
+  h->oc_num = set_pin_to_pwm( -1, h->gpio.port, h->gpio.num );
   if( h->oc_num < 0 ) {
     mrbc_raise(vm, MRBC_CLASS(ArgumentError), "PWM: Can't assign PWM.");
     return;
