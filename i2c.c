@@ -18,6 +18,7 @@
 #include <xc.h>
 #include "pic32mx.h"
 #include "pic32mx_common.h"
+#include "digital.h"
 #include "i2c.h"
 #include "mrubyc.h"
 
@@ -28,15 +29,17 @@
 //================================================================
 /*! initialize
 
-  use: SDA=B2, SCL=B3
+  use: I2C2 module only. SCL=B3, SDA=B2
 */
 void i2c_init(void)
 {
-  set_pin_to_digital_input( 2, 2 );
-  set_pin_to_digital_input( 2, 3 );
+  set_pin_to_digital_input( I2C2_SCL );
+  set_pin_to_digital_input( I2C2_SDA );
 
-  CNPUBbits.CNPUB2 = 1;
-  CNPUBbits.CNPUB3 = 1;
+  static const GPIO_HANDLE scl = (GPIO_HANDLE){I2C2_SCL};
+  static const GPIO_HANDLE sda = (GPIO_HANDLE){I2C2_SDA};
+  CNPUxSET(scl.port) = (1 << scl.num);
+  CNPUxSET(sda.port) = (1 << sda.num);
 
   // DS60001116G Equation 24-1: Baud Rate Generator Reload Value Calculation
   I2C2BRG = (uint16_t)(PBCLK / (2.0 * I2CFREQ) - 1 - PBCLK * 130e-9 / 2);

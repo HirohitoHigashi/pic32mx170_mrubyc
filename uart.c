@@ -117,8 +117,8 @@ void uart_init(void)
       TxD: RPB4(11pin) = Pin9
       RxD: RPA4(12pin) = none
   */
-  uart_handle_[0].txd_pin = (GPIO_HANDLE){ 2, 4 };
-  uart_handle_[0].rxd_pin = (GPIO_HANDLE){ 1, 4 };
+  uart_handle_[0].txd_pin = (GPIO_HANDLE){UART1_TXD};
+  uart_handle_[0].rxd_pin = (GPIO_HANDLE){UART1_RXD};
   uart_handle_[0].unit_num = 1;
   uart_handle_[0].delimiter = '\n';
 
@@ -140,8 +140,8 @@ void uart_init(void)
       TxD: RPB9(18pin) = Pin14
       RxD: RPB8(17pin) = Pin13
   */
-  uart_handle_[1].txd_pin = (GPIO_HANDLE){ 2, 9 };
-  uart_handle_[1].rxd_pin = (GPIO_HANDLE){ 2, 8 };
+  uart_handle_[1].txd_pin = (GPIO_HANDLE){UART2_TXD};
+  uart_handle_[1].rxd_pin = (GPIO_HANDLE){UART2_RXD};
   uart_handle_[1].unit_num = 2;
   uart_handle_[1].delimiter = '\n';
 

@@ -77,7 +77,21 @@ extern "C" {
 #define RPxnR(x,n)	(TBL_RPxnR[(x)-1][n])
 extern volatile uint32_t *TBL_RPxnR[];
 
-//! flash memory address and parameter.
+
+/*! default pin assign.
+*/
+// UART
+#define UART1_TXD	2,4	// B4
+#define UART1_RXD	1,4	// A4
+#define UART2_TXD	2,9	// B9
+#define UART2_RXD	2,8	// B8
+
+// I2C
+#define I2C2_SCL	2,3	// B3
+#define I2C2_SDA	2,2	// B2
+
+
+// flash memory address and parameter.
 #define FLASH_SAVE_ADDR 0xBD032000
 #define FLASH_END_ADDR  0xBD03EFFF
 #define FLASH_PAGE_SIZE 1024
