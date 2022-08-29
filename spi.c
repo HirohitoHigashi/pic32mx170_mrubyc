@@ -21,19 +21,39 @@
 
 /* ================================ C codes ================================ */
 
-static int spi_set_frequency( int unit, int freq )
+/*! set SPI clock frequency.
+
+  @param  sph_h		handle.
+  @param  freq		clock frequency (Hz)
+  @return		zero is no error.
+*/
+static int spi_set_frequency( const SPI_HANDLE *spi_h, int freq )
 {
   uint32_t brg = (uint32_t)PBCLK / 2 / freq - 1;
   if( brg >= 0x2000 ) return -1;
-  SPIxBRG(unit) = brg;
+
+  SPIxBRG(spi_h->spi_unit) = brg;
 
   return 0;
 }
 
 
-static int spi_transfer( int unit, const void *send_buf, int send_size,
+/*! data transfer
+
+  @param  sph_h		handle.
+  @param  send_buf	send data
+  @param  send_size	send data size (bytes)
+  @param  recv_buf	receive data buffer (or NULL)
+  @param  recv_size	receive data size (or zero)
+  @param  flag_include	is received data include the data received when state o ftransmission?
+  @return
+*/
+static int spi_transfer( const SPI_HANDLE *spi_h,
+			 const void *send_buf, int send_size,
                          void *recv_buf, int recv_size, int flag_include )
 {
+  int unit = spi_h->spi_unit;
+
   // force empty FIFO.
   while( !(SPIxSTAT(unit) & _SPI1STAT_SPITBE_MASK) ) {
   }
@@ -47,7 +67,7 @@ static int spi_transfer( int unit, const void *send_buf, int send_size,
   int s_count = send_size;
   int r_count = send_size;
 
-  // data send process.
+  // send data state.
   while( r_count > 0 ) {
     // write data to FIFO
     if( s_count > 0 && !(SPIxSTAT(unit) & _SPI1STAT_SPITBF_MASK)) {
@@ -63,7 +83,7 @@ static int spi_transfer( int unit, const void *send_buf, int send_size,
     }
   }
 
-  // data receive process.
+  // receive data state.
   s_count = recv_size;
   r_count = recv_size;
   while( r_count > 0 ) {
@@ -181,7 +201,7 @@ static void c_spi_new(mrbc_vm *vm, mrbc_value v[], int argc)
 
   // Initialize SPI registers.
   SPIxSTAT(h->spi_unit) = 0;
-  spi_set_frequency( h->spi_unit, freq );
+  spi_set_frequency( h, freq );
   SPIxCON2(h->spi_unit) = 0;
 
   static const uint32_t SPIxCON_MODES[] = {
@@ -218,7 +238,7 @@ static void c_spi_read(mrbc_vm *vm, mrbc_value v[], int argc)
     goto DONE;
   }
 
-  spi_transfer(h->spi_unit, 0, 0, buf, recv_len, 0);
+  spi_transfer( h, 0, 0, buf, recv_len, 0 );
   buf[recv_len] = 0;
   ret = mrbc_string_new_alloc( vm, buf, recv_len );
 
@@ -237,19 +257,17 @@ static void c_spi_write(mrbc_vm *vm, mrbc_value v[], int argc)
   SPI_HANDLE *h = (SPI_HANDLE *)v->instance->data;
 
   if( v[1].tt == MRBC_TT_STRING ) {
-    spi_transfer( h->spi_unit, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]),
-		  0, 0, 0 );
+    spi_transfer( h, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]), 0, 0, 0);
     goto DONE;
   }
 
   if( v[1].tt == MRBC_TT_INTEGER ) {
     uint8_t *buf = mrbc_alloc( vm, argc );
-    if( !buf ) goto DONE;	// ENOMEM
     int i;
     for( i = 0; i < argc; i++ ) {
       buf[i] = GET_INT_ARG(i+1);
     }
-    spi_transfer( h->spi_unit, buf, argc, 0, 0, 0 );
+    spi_transfer( h, buf, argc, 0, 0, 0 );
     mrbc_free( vm, buf );
     goto DONE;
   }
@@ -269,51 +287,42 @@ static void c_spi_write(mrbc_vm *vm, mrbc_value v[], int argc)
 */
 static void c_spi_transfer(mrbc_vm *vm, mrbc_value v[], int argc)
 {
-  mrbc_value ret;
   SPI_HANDLE *h = (SPI_HANDLE *)v->instance->data;
+  int send_len, recv_len;
+  uint8_t *buf;
 
   if( v[1].tt == MRBC_TT_STRING && v[2].tt == MRBC_TT_INTEGER ) {
-    int recv_len = GET_INT_ARG(2);
-    uint8_t *buf = mrbc_alloc( vm, recv_len+1 );
-    if( !buf ) goto ERROR_RETURN;		// ENOMEM
-    spi_transfer( h->spi_unit, mrbc_string_cstr(&v[1]), mrbc_string_size(&v[1]),
-		  buf, recv_len, 0 );
-    buf[recv_len] = 0;
-    ret = mrbc_string_new_alloc( vm, buf, recv_len );
-    goto DONE;
-  }
+    send_len = mrbc_string_size( &v[1] );
+    recv_len = mrbc_integer( v[2] );
+    buf = mrbc_alloc( vm, send_len + recv_len + 1 );
 
+    spi_transfer( h, mrbc_string_cstr(&v[1]), send_len, buf, recv_len, 1 );
 
-  if( v[1].tt == MRBC_TT_ARRAY && v[2].tt == MRBC_TT_INTEGER ) {
-    int send_len = mrbc_array_size( &v[1] );
-    int recv_len = GET_INT_ARG(2);
-    uint8_t *buf = mrbc_raw_alloc( send_len > recv_len ? send_len : recv_len );
-    if( !buf ) goto ERROR_RETURN;		// ENOMEM
+  } else if( v[1].tt == MRBC_TT_ARRAY && v[2].tt == MRBC_TT_INTEGER ) {
+    send_len = mrbc_array_size( &v[1] );
+    recv_len = mrbc_integer( v[2] );
+    buf = mrbc_alloc( vm, send_len + recv_len + 1 );
 
     int i;
     for( i = 0; i < send_len; i++ ) {
       mrbc_value v1 = mrbc_array_get( &v[1], i );
       if( v1.tt != MRBC_TT_INTEGER ) {		// TypeError. raise?
-	mrbc_raw_free( buf );
-	goto ERROR_RETURN;
+	mrbc_free( vm, buf );
+	mrbc_raise(vm, MRBC_CLASS(ArgumentError), "SPI: transfer parameter error.");
+	return;
       }
       buf[i] = v1.i;
     }
 
-    spi_transfer( h->spi_unit, buf, send_len, buf, recv_len, 0 );
-    buf[recv_len] = 0;
-    ret = mrbc_string_new_alloc( vm, buf, recv_len );
-    goto DONE;
+    spi_transfer( h, buf, send_len, buf, recv_len, 1 );
+
+  } else {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "SPI: transfer parameter error.");
+    return;
   }
 
-  // else TypeError. raise?
-
-
- ERROR_RETURN:
-  ret = mrbc_nil_value();
-
- DONE:
-  SET_RETURN(ret);
+  buf[send_len + recv_len] = 0;
+  SET_RETURN( mrbc_string_new_alloc( vm, buf, send_len + recv_len ) );
 }
 
 
