@@ -205,7 +205,7 @@ static int i2c_write_mrbc_value( const mrbc_value *v, int *n_of_out_bytes )
     A : Ack
     N : Nack
 */
-static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_read(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     Get parameter
@@ -270,7 +270,7 @@ static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
   }
 
   // receive data.
-  uint8_t *p = mrbc_string_cstr(&ret);
+  uint8_t *p = (uint8_t *)mrbc_string_cstr(&ret);
   for( int i = read_bytes-1; i >= 0; i-- ) {
     int res = i2c_read_byte( i == 0 );
     if( res < 0 ) {
@@ -311,7 +311,7 @@ static void c_i2c_read(mrb_vm *vm, mrb_value v[], int argc)
     P : Stop condition
     A : Ack
 */
-static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_write(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     Get parameter
@@ -376,7 +376,7 @@ static void c_i2c_write(mrb_vm *vm, mrb_value v[], int argc)
 
   @note LOW LEVEL function.
 */
-static void c_i2c_send_start(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_send_start(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( i2c_send_start() != 0 ) {
     mrbc_raise(vm, 0, "start condition failed.");
@@ -392,7 +392,7 @@ static void c_i2c_send_start(mrb_vm *vm, mrb_value v[], int argc)
 
   @note LOW LEVEL function.
 */
-static void c_i2c_send_restart(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_send_restart(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( i2c_send_restart() != 0 ) {
     mrbc_raise(vm, 0, "repeated start condition failed.");
@@ -408,7 +408,7 @@ static void c_i2c_send_restart(mrb_vm *vm, mrb_value v[], int argc)
 
   @note LOW LEVEL function.
 */
-static void c_i2c_send_stop(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_send_stop(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( i2c_send_stop() != 0 ) {
     mrbc_raise(vm, 0, "stop condition failed.");
@@ -424,7 +424,7 @@ static void c_i2c_send_stop(mrb_vm *vm, mrb_value v[], int argc)
 
   @note LOW LEVEL function.
 */
-static void c_i2c_raw_read(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_raw_read(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     Get parameter
@@ -447,7 +447,7 @@ static void c_i2c_raw_read(mrb_vm *vm, mrb_value v[], int argc)
   mrbc_value ret = mrbc_string_new(vm, 0, read_bytes);
 
   // receive data.
-  uint8_t *p = mrbc_string_cstr(&ret);
+  uint8_t *p = (uint8_t *)mrbc_string_cstr(&ret);
   for( int i = read_bytes-1; i >= 0; i-- ) {
     int res = i2c_read_byte( i == 0 && ack_nack == 0);
     if( res < 0 ) {
@@ -473,7 +473,7 @@ static void c_i2c_raw_read(mrb_vm *vm, mrb_value v[], int argc)
 
   @note LOW LEVEL function.
 */
-static void c_i2c_raw_write(mrb_vm *vm, mrb_value v[], int argc)
+static void c_i2c_raw_write(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   // send data
   int n_of_out_bytes = 0;

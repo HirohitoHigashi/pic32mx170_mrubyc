@@ -47,22 +47,22 @@ extern "C" {
 void mrbc_tick(void);
 
 #if !defined(MRBC_NO_TIMER)	// use hardware timer.
-# define hal_init()        ((void)0)
-# define hal_enable_irq()  __builtin_enable_interrupts()
-# define hal_disable_irq() __builtin_disable_interrupts()
-# define hal_idle_cpu()    _wait()
+# define mrbc_hal_init()        ((void)0)
+# define mrbc_hal_enable_irq()  __builtin_enable_interrupts()
+# define mrbc_hal_disable_irq() __builtin_disable_interrupts()
+# define mrbc_hal_idle_cpu()    _wait()
 
 #else // MRBC_NO_TIMER
-# define hal_init()        ((void)0)
-# define hal_enable_irq()  ((void)0)
-# define hal_disable_irq() ((void)0)
-# define hal_idle_cpu()    ((__delay_ms(MRBC_TICK_UNIT)), mrbc_tick())
+# define mrbc_hal_init()        ((void)0)
+# define mrbc_hal_enable_irq()  ((void)0)
+# define mrbc_hal_disable_irq() ((void)0)
+# define mrbc_hal_idle_cpu()    ((__delay_ms(MRBC_TICK_UNIT)), mrbc_tick())
 
 #endif
 
-int hal_write(int fd, const void *buf, int nbytes);
-int hal_flush(int fd);
-void hal_abort(const char *s);
+int mrbc_hal_write(int fd, const void *buf, int nbytes);
+int mrbc_hal_flush(int fd);
+void mrbc_hal_abort(const char *s);
 
 
 /***** Inline functions *****************************************************/

@@ -50,18 +50,18 @@ void * pickup_task( void *task );
 /*
   HAL functions.
 */
-int hal_write(int fd, const void *buf, int nbytes) {
+int mrbc_hal_write(int fd, const void *buf, int nbytes) {
   return uart_write( UART_HANDLE_CONSOLE, buf, nbytes );
 }
 
-int hal_flush(int fd) {
+int mrbc_hal_flush(int fd) {
   return 0;
 }
 
-void hal_abort( const char *s )
+void mrbc_hal_abort( const char *s )
 {
   if( s ) {
-    hal_write( 0, s, strlen(s) );
+    mrbc_hal_write( 0, s, strlen(s) );
   }
   __delay_ms(5000);
   system_reset();
@@ -104,7 +104,7 @@ static void c_sw(mrbc_vm *vm, mrbc_value v[], int argc)
 /*!
   Choose to enter programming mode or run mode.
 */
-static int check_timeout( void )
+static int check_bytecode_write_mode_timeout( void )
 {
   for( int i = 0; i < 50; i++ ) {
     onboard_led( 1, 1 );
@@ -126,12 +126,12 @@ int main(void)
   system_init();
   uart_init();
 
-  if( check_timeout() ) {
-    /* IDE code */
+  if( check_bytecode_write_mode_timeout() ) {
     receive_bytecode( memory_pool, MRBC_MEMORY_SIZE );
     memset( memory_pool, 0, MRBC_MEMORY_SIZE );
   }
-  mrbc_printf("\r\n\x1b(B\x1b)B\x1b[0m\x1b[2JRboard v2.1.0, mruby/c v3.4 start.\n");
+
+  mrbc_printf("\r\n\x1b(B\x1b)B\x1b[0m\x1b[2JRboard v2.1.0, mruby/c v4.0 start.\n");
 
   /* start mruby/c */
   mrbc_init(memory_pool, MRBC_MEMORY_SIZE);

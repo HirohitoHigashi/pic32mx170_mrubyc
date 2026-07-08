@@ -18,6 +18,9 @@
 #ifndef RBOARD_GPIO_H
 #define RBOARD_GPIO_H
 
+#include "mrubyc.h"
+
+
 /* Provide C++ Compatibility */
 #ifdef __cplusplus
 extern "C" {
@@ -40,8 +43,7 @@ typedef struct PIN_HANDLE {
 #define GPIO_PULL_DOWN		0x20
 #define GPIO_OPEN_DRAIN		0x40
 
-struct RObject;
-int set_pin_handle( PIN_HANDLE *pin_handle, const struct RObject *val );
+int set_pin_handle( PIN_HANDLE *pin_handle, const mrbc_value *val );
 int gpio_setmode( const PIN_HANDLE *pin, unsigned int mode );
 void mrbc_init_class_gpio( void );
 
