@@ -3,8 +3,9 @@
   mruby/c Key(Symbol) - Value store.
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -37,7 +38,7 @@ extern "C" {
 */
 typedef struct RKeyValue {
 #if defined(MRBC_DEBUG)
-  char obj_mark_[2];
+  char obj_mark_[2];	//!< set "KV" for debug
 #endif
   mrbc_sym sym_id;	//!< symbol ID as key.
   mrbc_value value;	//!< stored value.
@@ -58,6 +59,12 @@ typedef struct RKeyValueHandle {
   };
 
 } mrbc_kv_handle;
+
+#define MRBC_KVH_INITIALIZER(vm) (mrbc_kv_handle){	\
+    .data_size = 0,					\
+    .n_stored = 0,					\
+    .vm = vm,						\
+}
 
 
 //================================================================

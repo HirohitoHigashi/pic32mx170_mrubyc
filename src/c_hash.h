@@ -3,8 +3,9 @@
   mruby/c Hash class
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -23,6 +24,7 @@
 /***** Local headers ********************************************************/
 #include "value.h"
 #include "c_array.h"
+#include "vm.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,7 +67,7 @@ typedef struct RHashIterator {
 /***** Global variables *****************************************************/
 /***** Function prototypes **************************************************/
 //@cond
-mrbc_value mrbc_hash_new(struct VM *vm, int size);
+mrbc_value mrbc_hash_new(mrbc_vm *vm, int size);
 void mrbc_hash_delete(mrbc_value *hash);
 mrbc_value *mrbc_hash_search(const mrbc_value *hash, const mrbc_value *key);
 mrbc_value *mrbc_hash_search_by_id(const mrbc_value *hash, mrbc_sym sym_id);
@@ -76,7 +78,7 @@ mrbc_value mrbc_hash_remove(mrbc_value *hash, const mrbc_value *key);
 mrbc_value mrbc_hash_remove_by_id(mrbc_value *hash, mrbc_sym sym_id);
 void mrbc_hash_clear(mrbc_value *hash);
 int mrbc_hash_compare(const mrbc_value *v1, const mrbc_value *v2);
-mrbc_value mrbc_hash_dup(struct VM *vm, mrbc_value *src);
+mrbc_value mrbc_hash_dup(mrbc_vm *vm, mrbc_value *src);
 //@endcond
 
 /***** Inline functions *****************************************************/

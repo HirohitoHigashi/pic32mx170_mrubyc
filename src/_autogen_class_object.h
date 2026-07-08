@@ -78,7 +78,7 @@ static const mrbc_func_t method_functions_Object[] = {
   c_object_include,
   c_object_include,
 #if MRBC_USE_STRING
-  c_object_to_s,
+  c_object_inspect,
 #endif
 #if defined(MRBC_DEBUG)
   c_object_instance_methods,
@@ -120,7 +120,7 @@ static const mrbc_func_t method_functions_Object[] = {
   c_object_sprintf,
 #endif
 #if MRBC_USE_STRING
-  c_object_to_s,
+  c_object_inspect,
 #endif
 };
 
@@ -130,6 +130,7 @@ struct RBuiltinClass mrbc_class_Object = {
   .num_builtin_method = sizeof(method_symbols_Object) / sizeof(mrbc_sym),
   .super = 0,
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "Object",
 #endif
   .method_symbols = method_symbols_Object,
@@ -174,6 +175,7 @@ struct RBuiltinClass mrbc_class_NilClass = {
   .num_builtin_method = sizeof(method_symbols_NilClass) / sizeof(mrbc_sym),
   .super = MRBC_CLASS(Object),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "NilClass",
 #endif
   .method_symbols = method_symbols_NilClass,
@@ -193,10 +195,10 @@ static const mrbc_sym method_symbols_TrueClass[] = {
 
 static const mrbc_func_t method_functions_TrueClass[] = {
 #if MRBC_USE_STRING
-  c_true_to_s,
+  c_true_inspect,
 #endif
 #if MRBC_USE_STRING
-  c_true_to_s,
+  c_true_inspect,
 #endif
 };
 
@@ -206,6 +208,7 @@ struct RBuiltinClass mrbc_class_TrueClass = {
   .num_builtin_method = sizeof(method_symbols_TrueClass) / sizeof(mrbc_sym),
   .super = MRBC_CLASS(Object),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "TrueClass",
 #endif
   .method_symbols = method_symbols_TrueClass,
@@ -225,10 +228,10 @@ static const mrbc_sym method_symbols_FalseClass[] = {
 
 static const mrbc_func_t method_functions_FalseClass[] = {
 #if MRBC_USE_STRING
-  c_false_to_s,
+  c_false_inspect,
 #endif
 #if MRBC_USE_STRING
-  c_false_to_s,
+  c_false_inspect,
 #endif
 };
 
@@ -238,6 +241,7 @@ struct RBuiltinClass mrbc_class_FalseClass = {
   .num_builtin_method = sizeof(method_symbols_FalseClass) / sizeof(mrbc_sym),
   .super = MRBC_CLASS(Object),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "FalseClass",
 #endif
   .method_symbols = method_symbols_FalseClass,

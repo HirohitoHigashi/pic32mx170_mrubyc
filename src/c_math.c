@@ -3,8 +3,9 @@
   mruby/c Math module
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -33,7 +34,7 @@
 //================================================================
 /*! convert mrbc_value to c double
 */
-static double to_double( struct VM *vm, const mrbc_value *v )
+static double to_double( mrbc_vm *vm, const mrbc_value *v )
 {
   switch( mrbc_type(*v) ) {
   case MRBC_TT_INTEGER:	return (double)v->i;
@@ -48,7 +49,7 @@ static double to_double( struct VM *vm, const mrbc_value *v )
 //================================================================
 /*! (method) acos
 */
-static void c_math_acos(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_acos(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, acos( to_double(vm, &v[1]) ));
 }
@@ -56,7 +57,7 @@ static void c_math_acos(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) acosh
 */
-static void c_math_acosh(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_acosh(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, acosh( to_double(vm, &v[1]) ));
 }
@@ -64,7 +65,7 @@ static void c_math_acosh(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) asin
 */
-static void c_math_asin(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_asin(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, asin( to_double(vm, &v[1]) ));
 }
@@ -72,7 +73,7 @@ static void c_math_asin(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) asinh
 */
-static void c_math_asinh(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_asinh(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, asinh( to_double(vm, &v[1]) ));
 }
@@ -80,7 +81,7 @@ static void c_math_asinh(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) atan
 */
-static void c_math_atan(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_atan(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, atan( to_double(vm, &v[1]) ));
 }
@@ -88,7 +89,7 @@ static void c_math_atan(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) atan2
 */
-static void c_math_atan2(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_atan2(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, atan2( to_double(vm, &v[1]), to_double(vm, &v[2]) ));
 }
@@ -96,7 +97,7 @@ static void c_math_atan2(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) atanh
 */
-static void c_math_atanh(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_atanh(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, atanh( to_double(vm, &v[1]) ));
 }
@@ -104,7 +105,7 @@ static void c_math_atanh(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) cbrt
 */
-static void c_math_cbrt(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_cbrt(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, cbrt( to_double(vm, &v[1]) ));
 }
@@ -112,7 +113,7 @@ static void c_math_cbrt(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) cos
 */
-static void c_math_cos(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_cos(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, cos( to_double(vm, &v[1]) ));
 }
@@ -120,7 +121,7 @@ static void c_math_cos(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) cosh
 */
-static void c_math_cosh(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_cosh(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, cosh( to_double(vm, &v[1]) ));
 }
@@ -128,7 +129,7 @@ static void c_math_cosh(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) erf
 */
-static void c_math_erf(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_erf(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, erf( to_double(vm, &v[1]) ));
 }
@@ -136,7 +137,7 @@ static void c_math_erf(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) erfc
 */
-static void c_math_erfc(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_erfc(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, erfc( to_double(vm, &v[1]) ));
 }
@@ -144,7 +145,7 @@ static void c_math_erfc(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) exp
 */
-static void c_math_exp(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_exp(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, exp( to_double(vm, &v[1]) ));
 }
@@ -152,7 +153,7 @@ static void c_math_exp(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) hypot
 */
-static void c_math_hypot(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_hypot(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, hypot( to_double(vm, &v[1]), to_double(vm, &v[2]) ));
 }
@@ -160,7 +161,7 @@ static void c_math_hypot(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) ldexp
 */
-static void c_math_ldexp(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_ldexp(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   int exp;
   switch( mrbc_type(v[2]) ) {
@@ -177,7 +178,7 @@ static void c_math_ldexp(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) log
 */
-static void c_math_log(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_log(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, log( to_double(vm, &v[1]) ));
 }
@@ -185,7 +186,7 @@ static void c_math_log(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) log10
 */
-static void c_math_log10(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_log10(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, log10( to_double(vm, &v[1]) ));
 }
@@ -193,7 +194,7 @@ static void c_math_log10(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) log2
 */
-static void c_math_log2(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_log2(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, log2( to_double(vm, &v[1]) ));
 }
@@ -201,7 +202,7 @@ static void c_math_log2(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) sin
 */
-static void c_math_sin(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_sin(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, sin( to_double(vm, &v[1]) ));
 }
@@ -209,7 +210,7 @@ static void c_math_sin(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) sinh
 */
-static void c_math_sinh(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_sinh(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, sinh( to_double(vm, &v[1]) ));
 }
@@ -217,7 +218,7 @@ static void c_math_sinh(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) sqrt
 */
-static void c_math_sqrt(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_sqrt(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, sqrt( to_double(vm, &v[1]) ));
 }
@@ -225,7 +226,7 @@ static void c_math_sqrt(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) tan
 */
-static void c_math_tan(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_tan(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, tan( to_double(vm, &v[1]) ));
 }
@@ -233,7 +234,7 @@ static void c_math_tan(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) tanh
 */
-static void c_math_tanh(struct VM *vm, mrbc_value v[], int argc)
+static void c_math_tanh(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   v[0] = mrbc_float_value(vm, tanh( to_double(vm, &v[1]) ));
 }

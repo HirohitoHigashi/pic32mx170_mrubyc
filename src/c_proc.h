@@ -3,8 +3,9 @@
   mruby/c Proc class
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -17,7 +18,6 @@
 /***** Feature test switches ************************************************/
 /***** System headers *******************************************************/
 //@cond
-#include "vm_config.h"
 #include <stdint.h>
 //@endcond
 
@@ -31,6 +31,9 @@ extern "C" {
 /***** Constat values *******************************************************/
 /***** Macros ***************************************************************/
 /***** Typedefs *************************************************************/
+struct CALLINFO;
+struct IREP;
+
 //================================================================
 /*!@brief
   Proc object.
@@ -40,16 +43,17 @@ extern "C" {
 typedef struct RProc {
   MRBC_OBJECT_HEADER;
 
-  uint8_t block_or_method;
-  struct CALLINFO *callinfo;
-  struct CALLINFO *callinfo_self;
-  struct IREP *irep;
-  mrbc_value self;
-  mrbc_value ret_val;
+  uint8_t          block_or_method;	//!< 'B' or 'M' char code
+  struct CALLINFO *callinfo;		//!< callinfo when proc was created.
+  struct CALLINFO *callinfo_self;	//!< callinfo of self object. Valid when 'B'.
+  struct IREP     *irep;		//!< Target IREP.
+  mrbc_value       self;		//!< Copy of self object. Valid when 'B'.
+  mrbc_value       ret_val;		//!< Return value of this block.
 
 } mrbc_proc;
+//@cond
 typedef struct RProc mrb_proc;
-
+//@endcond
 
 /***** Global variables *****************************************************/
 /***** Function prototypes **************************************************/
@@ -66,4 +70,4 @@ void mrbc_proc_clear_vm_id(mrbc_value *v);
 #ifdef __cplusplus
 }
 #endif
-#endif
+#endif // ifndef MRBC_SRC_C_PROC_H_

@@ -18,6 +18,7 @@ struct RBuiltinClass mrbc_class_Exception = {
   .num_builtin_method = sizeof(method_symbols_Exception) / sizeof(mrbc_sym),
   .super = MRBC_CLASS(Object),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "Exception",
 #endif
   .method_symbols = method_symbols_Exception,
@@ -28,9 +29,11 @@ struct RBuiltinClass mrbc_class_Exception = {
 struct RBuiltinNoMethodClass mrbc_class_NoMemoryError = {
   .sym_id = MRBC_SYM(NoMemoryError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(Exception),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "NoMemoryError",
 #endif
 };
@@ -39,9 +42,11 @@ struct RBuiltinNoMethodClass mrbc_class_NoMemoryError = {
 struct RBuiltinNoMethodClass mrbc_class_NotImplementedError = {
   .sym_id = MRBC_SYM(NotImplementedError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(Exception),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "NotImplementedError",
 #endif
 };
@@ -50,9 +55,11 @@ struct RBuiltinNoMethodClass mrbc_class_NotImplementedError = {
 struct RBuiltinNoMethodClass mrbc_class_StandardError = {
   .sym_id = MRBC_SYM(StandardError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(Exception),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "StandardError",
 #endif
 };
@@ -61,9 +68,11 @@ struct RBuiltinNoMethodClass mrbc_class_StandardError = {
 struct RBuiltinNoMethodClass mrbc_class_ArgumentError = {
   .sym_id = MRBC_SYM(ArgumentError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "ArgumentError",
 #endif
 };
@@ -72,9 +81,11 @@ struct RBuiltinNoMethodClass mrbc_class_ArgumentError = {
 struct RBuiltinNoMethodClass mrbc_class_IndexError = {
   .sym_id = MRBC_SYM(IndexError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "IndexError",
 #endif
 };
@@ -83,9 +94,11 @@ struct RBuiltinNoMethodClass mrbc_class_IndexError = {
 struct RBuiltinNoMethodClass mrbc_class_IOError = {
   .sym_id = MRBC_SYM(IOError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "IOError",
 #endif
 };
@@ -94,9 +107,11 @@ struct RBuiltinNoMethodClass mrbc_class_IOError = {
 struct RBuiltinNoMethodClass mrbc_class_NameError = {
   .sym_id = MRBC_SYM(NameError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "NameError",
 #endif
 };
@@ -105,10 +120,25 @@ struct RBuiltinNoMethodClass mrbc_class_NameError = {
 struct RBuiltinNoMethodClass mrbc_class_NoMethodError = {
   .sym_id = MRBC_SYM(NoMethodError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(NameError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "NoMethodError",
+#endif
+};
+
+/*===== NoMatchingPatternError class =====*/
+struct RBuiltinNoMethodClass mrbc_class_NoMatchingPatternError = {
+  .sym_id = MRBC_SYM(NoMatchingPatternError),
+  .flag_builtin = 1,
+  .flag_nomethod = 1,
+  .num_builtin_method = 0,
+  .super = MRBC_CLASS(StandardError),
+#if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
+  .name = "NoMatchingPatternError",
 #endif
 };
 
@@ -116,9 +146,11 @@ struct RBuiltinNoMethodClass mrbc_class_NoMethodError = {
 struct RBuiltinNoMethodClass mrbc_class_RangeError = {
   .sym_id = MRBC_SYM(RangeError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "RangeError",
 #endif
 };
@@ -127,9 +159,11 @@ struct RBuiltinNoMethodClass mrbc_class_RangeError = {
 struct RBuiltinNoMethodClass mrbc_class_RuntimeError = {
   .sym_id = MRBC_SYM(RuntimeError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "RuntimeError",
 #endif
 };
@@ -138,9 +172,11 @@ struct RBuiltinNoMethodClass mrbc_class_RuntimeError = {
 struct RBuiltinNoMethodClass mrbc_class_TypeError = {
   .sym_id = MRBC_SYM(TypeError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "TypeError",
 #endif
 };
@@ -149,9 +185,11 @@ struct RBuiltinNoMethodClass mrbc_class_TypeError = {
 struct RBuiltinNoMethodClass mrbc_class_ZeroDivisionError = {
   .sym_id = MRBC_SYM(ZeroDivisionError),
   .flag_builtin = 1,
+  .flag_nomethod = 1,
   .num_builtin_method = 0,
   .super = MRBC_CLASS(StandardError),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "ZeroDivisionError",
 #endif
 };

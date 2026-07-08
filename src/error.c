@@ -3,8 +3,9 @@
   exception classes
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -33,7 +34,6 @@ static mrbc_exception * sub_exception_new(struct VM *vm, struct RClass *exc_cls)
 {
   // allocate memory for instance.
   mrbc_exception *ex = mrbc_alloc( vm, sizeof(mrbc_exception) );
-  if( !ex ) return ex;		// ENOMEM
 
   MRBC_INIT_OBJECT_HEADER( ex, "EX" );
   ex->cls = exc_cls;
@@ -65,7 +65,6 @@ static mrbc_exception * sub_exception_new(struct VM *vm, struct RClass *exc_cls)
 mrbc_value mrbc_exception_new(struct VM *vm, struct RClass *exc_cls, const void *message, int len )
 {
   mrbc_exception *ex = sub_exception_new( vm, exc_cls );
-  if( !ex ) return mrbc_nil_value();
 
   // in case of no message.
   if( !message ) {
@@ -90,17 +89,14 @@ mrbc_value mrbc_exception_new(struct VM *vm, struct RClass *exc_cls, const void 
 
   // else, copy the message.
   uint8_t *buf = mrbc_alloc( vm, len+1 );
-  if( buf ) {
-    memcpy( buf, message, len );
-    buf[len] = 0;
-    ex->message_size = len;
-  } else {
-    ex->message_size = 0;
-  }
+
+  memcpy( buf, message, len );
+  buf[len] = 0;
+  ex->message_size = len;
   ex->message = buf;
 
  RETURN:
-  return (mrbc_value){.tt = MRBC_TT_EXCEPTION, .exception = ex};
+  return mrbc_immediate_value(MRBC_TT_EXCEPTION, .exception = ex);
 }
 
 
@@ -116,12 +112,11 @@ mrbc_value mrbc_exception_new(struct VM *vm, struct RClass *exc_cls, const void 
 mrbc_value mrbc_exception_new_alloc(struct VM *vm, struct RClass *exc_cls, const void *message, int len )
 {
   mrbc_exception *ex = sub_exception_new( vm, exc_cls );
-  if( !ex ) return mrbc_nil_value();
 
   ex->message_size = len;
   ex->message = message;
 
-  return (mrbc_value){.tt = MRBC_TT_EXCEPTION, .exception = ex};
+  return mrbc_immediate_value(MRBC_TT_EXCEPTION, .exception = ex);
 }
 
 
@@ -183,8 +178,8 @@ void mrbc_raisef( struct VM *vm, struct RClass *exc_cls, const char *fstr, ... )
     mrbc_vasprintf( &buf, MESSAGE_INI_LEN, fstr, ap );
     mrbc_decref(&vm->exception);
     vm->exception = mrbc_exception_new_alloc( vm,
-			exc_cls ? exc_cls : MRBC_CLASS(RuntimeError),
-			buf, strlen(buf) );
+                        exc_cls ? exc_cls : MRBC_CLASS(RuntimeError),
+                        buf, strlen(buf) );
     vm->flag_preemption = 2;
 
   } else {
@@ -224,7 +219,7 @@ void mrbc_print_exception( const mrbc_value *v )
   const char *clsname = mrbc_symid_to_str(exc->cls->sym_id);
 
   mrbc_printf("Exception: %s (%s)\n",
-	      exc->message ? (const char *)exc->message : clsname, clsname );
+              exc->message ? (const char *)exc->message : clsname, clsname );
 }
 
 
@@ -245,7 +240,7 @@ void mrbc_print_vm_exception( const struct VM *vm )
     mrbc_printf(" in `%s':", mrbc_symid_to_str(exc->method_id) );
   }
   mrbc_printf(" %s (%s)\n",
-	      exc->message ? (const char *)exc->message : clsname, clsname );
+              exc->message ? (const char *)exc->message : clsname, clsname );
 
   for( int i = 0; i < MRBC_EXCEPTION_CALL_NEST_LEVEL; i++ ) {
     if( !exc->call_nest[i] ) return;
@@ -304,6 +299,7 @@ static void c_exception_message(struct VM *vm, mrbc_value v[], int argc)
         IOError
         NameError
           NoMethodError
+	NoMatchingPatternError
         RangeError
         RuntimeError
         TypeError
@@ -326,31 +322,34 @@ static void c_exception_message(struct VM *vm, mrbc_value v[], int argc)
   CLASS("StandardError")
   SUPER("Exception")
 
-  CLASS("ArgumentError")
-  SUPER("StandardError")
+    CLASS("ArgumentError")
+    SUPER("StandardError")
 
-  CLASS("IndexError")
-  SUPER("StandardError")
+    CLASS("IndexError")
+    SUPER("StandardError")
 
-  CLASS("IOError")
-  SUPER("StandardError")
+    CLASS("IOError")
+    SUPER("StandardError")
 
-  CLASS("NameError")
-  SUPER("StandardError")
+    CLASS("NameError")
+    SUPER("StandardError")
 
-  CLASS("NoMethodError")
-  SUPER("NameError")
+      CLASS("NoMethodError")
+      SUPER("NameError")
 
-  CLASS("RangeError")
-  SUPER("StandardError")
+    CLASS("NoMatchingPatternError")
+    SUPER("StandardError")
 
-  CLASS("RuntimeError")
-  SUPER("StandardError")
+    CLASS("RangeError")
+    SUPER("StandardError")
 
-  CLASS("TypeError")
-  SUPER("StandardError")
+    CLASS("RuntimeError")
+    SUPER("StandardError")
 
-  CLASS("ZeroDivisionError")
-  SUPER("StandardError")
+    CLASS("TypeError")
+    SUPER("StandardError")
+
+    CLASS("ZeroDivisionError")
+    SUPER("StandardError")
 */
 #include "_autogen_class_exception.h"

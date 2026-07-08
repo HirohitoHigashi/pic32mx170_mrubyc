@@ -3,8 +3,9 @@
   console output module. (not yet input)
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -31,12 +32,14 @@ extern "C" {
 #endif
 /***** Constant values ******************************************************/
 /***** Macros ***************************************************************/
+//@cond
 // For compatibility. Not recommended for use.
 #define mrb_p(vm, v)	mrbc_p(&v)
 #define console_print mrbc_print
 #define console_nprint mrbc_nprint
 #define console_putchar mrbc_putchar
 #define console_printf mrbc_printf
+//@endcond
 
 
 /***** Typedefs *************************************************************/
@@ -80,6 +83,7 @@ void mrbc_snprintf(char *buf, int bufsiz, const char *fstr, ...);
 void mrbc_vprintf(const char *fstr, va_list ap);
 void mrbc_vasprintf(char **buf, int bufsiz, const char *fstr, va_list ap);
 void mrbc_p(const mrbc_value *v);
+void mrbc_char_to_s(char *buf, const void *src);
 int mrbc_p_sub(const mrbc_value *v);
 int mrbc_puts_sub(const mrbc_value *v);
 int mrbc_print_sub(const mrbc_value *v);
@@ -116,7 +120,7 @@ static inline void mrbc_print(const char *str)
   @param  fstr	format string.
 */
 static inline void mrbc_printf_init( mrbc_printf_t *pf, char *buf, int size,
-				     const char *fstr )
+                                     const char *fstr )
 {
   pf->p = pf->buf = buf;
   pf->buf_end = buf + size - 1;

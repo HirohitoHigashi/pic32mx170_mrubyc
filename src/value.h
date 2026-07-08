@@ -3,8 +3,9 @@
   mruby/c value definitions
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -32,6 +33,7 @@ extern "C" {
 /***** Typedefs *************************************************************/
 // pre define of some struct
 struct VM;
+struct RClass;
 struct RObject;
 
 // mrbc types
@@ -45,16 +47,17 @@ typedef uint64_t mrbc_uint_t;
 typedef int32_t mrbc_int_t;
 typedef uint32_t mrbc_uint_t;
 #endif
-typedef mrbc_int_t mrb_int;
 
 #if MRBC_USE_FLOAT == 1
 typedef float mrbc_float_t;
-#elif MRBC_USE_FLOAT == 2
+#else
 typedef double mrbc_float_t;
 #endif
-#if MRBC_USE_FLOAT != 0
+
+//@cond
+typedef mrbc_int_t mrb_int;
 typedef mrbc_float_t mrb_float;
-#endif
+//@endcond
 
 typedef int16_t mrbc_sym;	//!< mruby/c symbol ID
 typedef void (*mrbc_func_t)(struct VM *vm, struct RObject *v, int argc);
@@ -130,14 +133,23 @@ typedef enum {
 /* Define the object structure having reference counter.
 */
 #if defined(MRBC_DEBUG)
-#define MRBC_OBJECT_HEADER  uint8_t obj_mark_[2]; uint16_t ref_count
+# define MRBC_OBJECT_HEADER  uint8_t obj_mark_[2]; uint16_t ref_count
+# define MRBC_INIT_OBJECT_HEADER(p, t)	(p)->obj_mark_[0] = (t)[0]; \
+                                        (p)->obj_mark_[1] = (t)[1]; \
+                                        (p)->ref_count = 1
+# define MRBC_INIT_OBJECT_HEADER_DI(t) \
+  .obj_mark_ = #t, \
+  .ref_count = 1,
+
 #else
-#define MRBC_OBJECT_HEADER  uint16_t ref_count
+# define MRBC_OBJECT_HEADER  uint16_t ref_count
+# define MRBC_INIT_OBJECT_HEADER(p, t)  (p)->ref_count = 1
+# define MRBC_INIT_OBJECT_HEADER_DI(t)	.ref_count = 1,
 #endif
 
+
 //================================================================
-/*!@brief
-  Base class for some objects.
+/*! Base class for some objects.
 */
 struct RBasic {
   MRBC_OBJECT_HEADER;
@@ -145,75 +157,23 @@ struct RBasic {
 
 
 //================================================================
-/*!@brief
-  Value object.
-*/
-struct RObject {
-  mrbc_vtype tt : 8;
-  union {
-    mrbc_int_t i;		// MRBC_TT_INTEGER
-#if MRBC_USE_FLOAT
-    mrbc_float_t d;		// MRBC_TT_FLOAT
+#if defined(MRBC_NAN_BOXING)
+# include "boxing_nan.h"
+#else	// !defined(MRBC_NAN_BOXING)
+# include "boxing_no.h"
 #endif
-    mrbc_sym sym_id;		// MRBC_TT_SYMBOL
-    struct RBasic *obj;		// use inc/dec ref only.
-    struct RClass *cls;		// MRBC_TT_CLASS, MRBC_TT_MODULE
-    struct RInstance *instance;	// MRBC_TT_OBJECT
-    struct RProc *proc;		// MRBC_TT_PROC
-    struct RArray *array;	// MRBC_TT_ARRAY
-    struct RString *string;	// MRBC_TT_STRING
-    struct RRange *range;	// MRBC_TT_RANGE
-    struct RHash *hash;		// MRBC_TT_HASH
-    struct RException *exception; // MRBC_TT_EXCEPTION
-    void *handle;		// internal use only.
-  };
-};
+
+typedef struct RObject mrbc_object;
+//@cond
 typedef struct RObject mrb_object;	// not recommended.
 typedef struct RObject mrb_value;	// not recommended.
-typedef struct RObject mrbc_object;
-typedef struct RObject mrbc_value;
+//@endcond
 
 
 /***** Macros ***************************************************************/
 
-// getters
-/*!
-  @def mrbc_type(o)
-  get the type (#mrbc_vtype) from mrbc_value.
-
-  @def mrbc_integer(o)
-  get int value from mrbc_value.
-
-  @def mrbc_float(o)
-  get float(double) value from mrbc_value.
-
-  @def mrbc_symbol(o)
-  get symbol value (#mrbc_sym) from mrbc_value.
-*/
-#define mrbc_type(o)		((o).tt)
-#define mrbc_integer(o)		((o).i)
-#define mrbc_float(o)		((o).d)
-#define mrbc_symbol(o)		((o).sym_id)
-
-// setters
-#define mrbc_set_integer(p,n)	(p)->tt = MRBC_TT_INTEGER; (p)->i = (n)
-#define mrbc_set_float(p,n)	(p)->tt = MRBC_TT_FLOAT; (p)->d = (n)
-#define mrbc_set_nil(p)		(p)->tt = MRBC_TT_NIL
-#define mrbc_set_true(p)	(p)->tt = MRBC_TT_TRUE
-#define mrbc_set_false(p)	(p)->tt = MRBC_TT_FALSE
-#define mrbc_set_bool(p,n)	(p)->tt = (n)? MRBC_TT_TRUE: MRBC_TT_FALSE
-#define mrbc_set_symbol(p,n)	(p)->tt = MRBC_TT_SYMBOL; (p)->sym_id = (n)
-
-// make immediate values.
-#define mrbc_integer_value(n)	((mrbc_value){.tt = MRBC_TT_INTEGER, .i=(n)})
-#define mrbc_float_value(vm,n)	((mrbc_value){.tt = MRBC_TT_FLOAT, .d=(n)})
-#define mrbc_nil_value()	((mrbc_value){.tt = MRBC_TT_NIL})
-#define mrbc_true_value()	((mrbc_value){.tt = MRBC_TT_TRUE})
-#define mrbc_false_value()	((mrbc_value){.tt = MRBC_TT_FALSE})
-#define mrbc_bool_value(n)	((mrbc_value){.tt = (n)?MRBC_TT_TRUE:MRBC_TT_FALSE})
-#define mrbc_symbol_value(n)	((mrbc_value){.tt = MRBC_TT_SYMBOL, .sym_id=(n)})
-
-// (for mruby compatible)
+//@cond
+// (for mruby compatibility)
 #define mrb_type(o)		mrbc_type(o)
 #define mrb_integer(o)		mrbc_integer(o)
 #define mrb_float(o)		mrbc_float(o)
@@ -232,7 +192,7 @@ typedef struct RObject mrbc_value;
 #define mrbc_fixnum_value(n)	mrbc_integer_value(n)
 #define mrb_fixnum(o)		mrbc_integer(o)
 #define mrb_fixnum_value(n)	mrbc_integer_value(n)
-
+//@endcond
 
 
 // for C call
@@ -265,48 +225,42 @@ typedef struct RObject mrbc_value;
   } while(0)
 #define SET_NIL_RETURN() do {	\
     mrbc_decref(v);		\
-    v[0].tt = MRBC_TT_NIL;	\
+    mrbc_set_nil(v);		\
   } while(0)
 #define SET_FALSE_RETURN() do { \
     mrbc_decref(v);		\
-    v[0].tt = MRBC_TT_FALSE;	\
+    mrbc_set_false(v);		\
   } while(0)
 #define SET_TRUE_RETURN() do {	\
     mrbc_decref(v);		\
-    v[0].tt = MRBC_TT_TRUE;	\
+    mrbc_set_true(v);		\
   } while(0)
-#define SET_BOOL_RETURN(n) do {			 \
-    int tt = (n) ? MRBC_TT_TRUE : MRBC_TT_FALSE; \
-    mrbc_decref(v);				 \
-    v[0].tt = tt;				 \
+#define SET_BOOL_RETURN(n) do { \
+    int nnn = (n);		\
+    mrbc_decref(v);		\
+    mrbc_set_bool(v,nnn);	\
   } while(0)
 #define SET_INT_RETURN(n) do {	\
     mrbc_int_t nnn = (n);	\
     mrbc_decref(v);		\
-    v[0].tt = MRBC_TT_INTEGER;	\
-    v[0].i = nnn;		\
+    mrbc_set_integer(v,nnn);	\
   } while(0)
 #define SET_FLOAT_RETURN(n) do {\
     mrbc_float_t nnn = (n);	\
     mrbc_decref(v);		\
-    v[0].tt = MRBC_TT_FLOAT;	\
-    v[0].d = nnn;		\
+    mrbc_set_float(v,nnn);	\
 } while(0)
 
+
+#if !defined(MRBC_NOT_RECOMMEND_TO_USE)
+// GET_*_ARG; not recommend to use.
+//  maybe delete for future.
 #define GET_TT_ARG(n)		(v[(n)].tt)
 #define GET_INT_ARG(n)		(v[(n)].i)
 #define GET_ARY_ARG(n)		(v[(n)])
 #define GET_ARG(n)		(v[(n)])
 #define GET_FLOAT_ARG(n)	(v[(n)].d)
 #define GET_STRING_ARG(n)	(v[(n)].string->data)
-
-
-#if defined(MRBC_DEBUG)
-#define MRBC_INIT_OBJECT_HEADER(p, t)  (p)->ref_count = 1; (p)->obj_mark_[0] = (t)[0]; (p)->obj_mark_[1] = (t)[1]
-#else
-#define MRBC_INIT_OBJECT_HEADER(p, t)  (p)->ref_count = 1
-#endif
-
 
 // for Numeric values.
 /*!
@@ -326,7 +280,9 @@ typedef struct RObject mrbc_value;
   (val).tt == MRBC_TT_FLOAT ? (mrbc_int_t)(val).d : 0
 #define MRBC_TO_FLOAT(val) \
   (val).tt == MRBC_TT_FLOAT ? (val).d : \
-  (val).tt == MRBC_TT_INTEGER ? (mrbc_float_t)(val).i : 0.0
+  (val).tt == MRBC_TT_INTEGER ? (mrbc_float_t)(val).i : (mrbc_float_t)0
+
+#endif  // !defined(MRBC_NOT_RECOMMEND_TO_USE)
 
 
 //================================================================
@@ -469,8 +425,8 @@ typedef struct RObject mrbc_value;
   Delete retrieved keyword arguments.
 */
 #define MRBC_KW_ARG(...) \
-  MRBC_each(__VA_ARGS__)( MRBC_KW_ARG_decl1, __VA_ARGS__ ) \
-  if( v[argc+1].tt == MRBC_TT_HASH ) { \
+  MRBC_each(__VA_ARGS__)( MRBC_KW_ARG_decl1, __VA_ARGS__ )   \
+  if( mrbc_type(v[argc+1]) == MRBC_TT_HASH ) {		     \
     MRBC_each(__VA_ARGS__)( MRBC_KW_ARG_decl2, __VA_ARGS__ ) \
   }
 #define MRBC_KW_ARG_decl1(kw) mrbc_value kw = {.tt = MRBC_TT_EMPTY};
@@ -478,10 +434,10 @@ typedef struct RObject mrbc_value;
 
 #define MRBC_KW_DICT(dict) \
   mrbc_value dict; \
-  if( v[argc+1].tt == MRBC_TT_HASH ) { dict = v[argc+1]; v[argc+1].tt = MRBC_TT_EMPTY; } \
+  if( mrbc_type(v[argc+1]) == MRBC_TT_HASH ) { dict = v[argc+1]; v[argc+1].tt = MRBC_TT_EMPTY; } \
   else { dict = mrbc_hash_new(vm, 0); }
 
-#define MRBC_KW_ISVALID(kw) (kw.tt != MRBC_TT_EMPTY)
+#define MRBC_KW_ISVALID(kw) (mrbc_type(kw) != MRBC_TT_EMPTY)
 
 #define MRBC_KW_MANDATORY(...) \
   (MRBC_each(__VA_ARGS__)( MRBC_KW_MANDATORY_decl1, __VA_ARGS__ ) 1)
@@ -489,7 +445,7 @@ typedef struct RObject mrbc_value;
   (mrbc_raisef(vm, MRBC_CLASS(ArgumentError), "missing keyword: %s", #kw), 0))&&
 
 #define MRBC_KW_END() \
-  (((v[argc+1].tt == MRBC_TT_HASH) && mrbc_hash_size(&v[argc+1])) ? \
+  (((mrbc_type(v[argc+1]) == MRBC_TT_HASH) && mrbc_hash_size(&v[argc+1])) ? \
    (mrbc_raise(vm, MRBC_CLASS(ArgumentError), "unknown keyword"), 0) : 1)
 
 #define MRBC_KW_DELETE(...) \
@@ -558,6 +514,7 @@ extern void (* const mrbc_delfunc[])(mrbc_value *);
 int mrbc_compare(const mrbc_value *v1, const mrbc_value *v2);
 mrbc_int_t mrbc_atoi(const char *s, int base);
 int mrbc_strcpy(char *dest, int destsize, const char *src);
+void mrbc_format_float(char *buf, int bufsiz, mrbc_float_t flo);
 mrbc_int_t mrbc_val_i(struct VM *vm, const mrbc_value *val);
 mrbc_int_t mrbc_val_i2(struct VM *vm, const mrbc_value *val, mrbc_int_t default_value);
 double mrbc_val_f(struct VM *vm, const mrbc_value *val);
@@ -588,10 +545,10 @@ int mrbc_arg_b2(struct VM *vm, mrbc_value v[], int argc, int n, int default_valu
 */
 static inline void mrbc_incref(mrbc_value *v)
 {
-  if( v->tt <= MRBC_TT_INC_DEC_THRESHOLD ) return;
+  if( mrbc_type(*v) <= MRBC_TT_INC_DEC_THRESHOLD ) return;
 
   assert( v->obj->ref_count != 0 );
-  assert( v->obj->ref_count != 0xff );	// check max value.
+  assert( v->obj->ref_count != 0xffff );	// check max value.
   v->obj->ref_count++;
 }
 
@@ -603,7 +560,7 @@ static inline void mrbc_incref(mrbc_value *v)
 */
 static inline void mrbc_decref(mrbc_value *v)
 {
-  if( v->tt <= MRBC_TT_INC_DEC_THRESHOLD ) return;
+  if( mrbc_type(*v) <= MRBC_TT_INC_DEC_THRESHOLD ) return;
 
   assert( v->obj->ref_count != 0 );
   assert( v->obj->ref_count != 0xffff );	// check broken data.
@@ -622,7 +579,7 @@ static inline void mrbc_decref(mrbc_value *v)
 static inline void mrbc_decref_empty(mrbc_value *v)
 {
   mrbc_decref(v);
-  v->tt = MRBC_TT_EMPTY;
+  mrbc_set_tt(v, MRBC_TT_EMPTY);
 }
 
 

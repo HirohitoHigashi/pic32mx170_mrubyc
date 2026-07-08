@@ -3,8 +3,9 @@
   mruby/c Symbol class
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -39,6 +40,9 @@
 #endif
 
 #define OFFSET_BUILTIN_SYMBOL 256
+#if OFFSET_BUILTIN_SYMBOL <= MRBC_BUILTIN_SYMBOL_MAX
+# error OFFSET_BUILTIN_SYMBOL overflow. Please increase the value.
+#endif
 
 
 /***** Macros ***************************************************************/
@@ -98,15 +102,15 @@ static int search_builtin_symbol( const char *str )
 
     while( 1 ) {	// string compare, same order as cruby.
       if( *p1 < *p2 ) {
-	left = mid + 1;
-	break;
+        left = mid + 1;
+        break;
       }
       if( *p1 > *p2 ) {
-	right = mid;
-	break;
+        right = mid;
+        break;
       }
       if( *p1 == 0 ) {
-	return mid;
+        return mid;
       }
 
       p1++;
@@ -232,8 +236,8 @@ mrbc_sym mrbc_str_to_symid(const char *str)
 /*! Convert symbol value to string.
 
   @param  sym_id	Symbol value.
-  @return const char*	String.
-  @retval NULL		Invalid sym_id was given.
+  @return const char*	Symbol String.
+                        Returns an empty string if the sym_id is invalid.
 */
 const char * mrbc_symid_to_str(mrbc_sym sym_id)
 {
@@ -242,8 +246,8 @@ const char * mrbc_symid_to_str(mrbc_sym sym_id)
   }
 
   sym_id -= OFFSET_BUILTIN_SYMBOL;
-  if( sym_id < 0 ) return NULL;
-  if( sym_id >= sym_index_pos ) return NULL;
+  if( sym_id < 0 ) return "";
+  if( sym_id >= sym_index_pos ) return "";
 
   return sym_index[sym_id].cstr;
 }
@@ -307,17 +311,19 @@ void mrbc_separate_nested_symid(mrbc_sym sym_id, mrbc_sym *id1, mrbc_sym *id2)
   static const int w = sizeof(mrbc_sym) * 2;
   const char *s = mrbc_symid_to_str(sym_id);
 
+  *id1 = 0;
+  if( id2 != NULL ) *id2 = 0;
+  if( *s == 0 ) return;
+
   assert( mrbc_is_nested_symid( sym_id ));
   assert( strlen(s) == w*2 );
 
-  *id1 = 0;
   int i = 0;
   while( i < w ) {
     *id1 = (*id1 << 4) + (s[i++] - '0');
   }
 
   if( id2 == NULL ) return;
-  *id2 = 0;
   while( i < w*2 ) {
     *id2 = (*id2 << 4) + (s[i++] - '0');
   }
@@ -339,13 +345,12 @@ mrbc_value mrbc_symbol_new(struct VM *vm, const char *str)
   // create symbol object dynamically.
   int size = strlen(str) + 1;
   char *buf = mrbc_raw_alloc_no_free(size);
-  if( buf == NULL ) return mrbc_nil_value();	// ENOMEM raise?
 
   memcpy(buf, str, size);
   sym_id = add_index( calc_hash(buf), buf );
   if( sym_id < 0 ) {
     mrbc_raisef(vm, MRBC_CLASS(Exception),
-		"Overflow MAX_SYMBOLS_COUNT for '%s'", str );
+                "Overflow MAX_SYMBOLS_COUNT for '%s'", str );
     return mrbc_nil_value();
   }
 
@@ -382,9 +387,21 @@ static void c_symbol_all_symbols(struct VM *vm, mrbc_value v[], int argc)
 */
 static void c_symbol_inspect(struct VM *vm, mrbc_value v[], int argc)
 {
+  if( mrbc_type(v[0]) == MRBC_TT_CLASS ) {
+    mrbc_object_inspect(vm, v, argc);
+    return;
+  }
+
   const char *s = mrbc_symid_to_str( mrbc_symbol(v[0]) );
-  v[0] = mrbc_string_new_cstr(vm, ":");
-  mrbc_string_append_cstr(&v[0], s);
+
+  if( strchr(s, ':') ) {
+    v[0] = mrbc_string_new_cstr(vm, ":\"");
+    mrbc_string_append_cstr(&v[0], s);
+    mrbc_string_append_cstr(&v[0], "\"");
+  } else {
+    v[0] = mrbc_string_new_cstr(vm, ":");
+    mrbc_string_append_cstr(&v[0], s);
+  }
 }
 
 
@@ -393,8 +410,8 @@ static void c_symbol_inspect(struct VM *vm, mrbc_value v[], int argc)
 */
 static void c_symbol_to_s(struct VM *vm, mrbc_value v[], int argc)
 {
-  if( v[0].tt == MRBC_TT_CLASS ) {
-    v[0] = mrbc_string_new_cstr(vm, mrbc_symid_to_str( v[0].cls->sym_id ));
+  if( mrbc_type(v[0]) == MRBC_TT_CLASS ) {
+    mrbc_object_inspect(vm, v, argc);
     return;
   }
 
@@ -410,11 +427,11 @@ static void c_symbol_to_s(struct VM *vm, mrbc_value v[], int argc)
 
   METHOD( "all_symbols", c_symbol_all_symbols )
 #if MRBC_USE_STRING
-  METHOD( "inspect", c_symbol_inspect )
-  METHOD( "to_s", c_symbol_to_s )
-  METHOD( "id2name", c_symbol_to_s )
+  METHOD( "inspect",     c_symbol_inspect )
+  METHOD( "to_s",        c_symbol_to_s )
+  METHOD( "id2name",     c_symbol_to_s )
 #endif
-  METHOD( "to_sym", c_ineffect )
+  METHOD( "to_sym",      c_ineffect )
 */
 #include "_autogen_class_symbol.h"
 
@@ -452,7 +469,7 @@ void mrbc_debug_dump_symbol(void)
   int used, total = MAX_SYMBOLS_COUNT;
   mrbc_symbol_statistics( &used );
   mrbc_printf("Symbol table: %d/%d %d%% used.\n",
-		used, total, 100 * used / total );
+                used, total, 100 * used / total );
 */
 void mrbc_symbol_statistics( int *total_used )
 {

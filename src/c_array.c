@@ -3,8 +3,9 @@
   mruby/c Array class
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -79,29 +80,20 @@
   @param  size	initial size
   @return 	array object
 */
-mrbc_value mrbc_array_new(struct VM *vm, int size)
+mrbc_value mrbc_array_new(mrbc_vm *vm, int size)
 {
-  mrbc_value value = {.tt = MRBC_TT_ARRAY};
-
-  /*
-    Allocate handle and data buffer.
-  */
-  mrbc_array *h = mrbc_alloc(vm, sizeof(mrbc_array));
-  if( !h ) return value;	// ENOMEM
-
+  // Allocate handle and data buffer.
+  mrbc_array *ary = mrbc_alloc(vm, sizeof(mrbc_array));
   mrbc_value *data = mrbc_alloc(vm, sizeof(mrbc_value) * size);
-  if( !data ) {			// ENOMEM
-    mrbc_raw_free( h );
-    return value;
-  }
 
-  MRBC_INIT_OBJECT_HEADER( h, "AR" );
-  h->data_size = size;
-  h->n_stored = 0;
-  h->data = data;
+  *ary = (mrbc_array){
+    MRBC_INIT_OBJECT_HEADER_DI(AR)
+    .data_size = size,
+    .n_stored = 0,
+    .data = data,
+  };
 
-  value.array = h;
-  return value;
+  return mrbc_immediate_value(MRBC_TT_ARRAY, .array = ary);
 }
 
 
@@ -158,7 +150,6 @@ int mrbc_array_resize(mrbc_value *ary, int size)
 
   mrbc_array *h = ary->array;
   mrbc_value *data = mrbc_raw_realloc(h->data, sizeof(mrbc_value) * size);
-  if( !data ) return E_NOMEMORY_ERROR;	// ENOMEM
 
   h->data = data;
   h->data_size = size;
@@ -185,8 +176,8 @@ int mrbc_array_set(mrbc_value *ary, int idx, mrbc_value *set_val)
   }
 
   // need resize?
-  if( idx >= h->data_size && mrbc_array_resize(ary, idx + 1) != 0 ) {
-    return E_NOMEMORY_ERROR;			// ENOMEM
+  if( idx >= h->data_size ) {
+    mrbc_array_resize(ary, idx + 1);
   }
 
   if( idx < h->n_stored ) {
@@ -195,7 +186,7 @@ int mrbc_array_set(mrbc_value *ary, int idx, mrbc_value *set_val)
   } else {
     // clear empty cells.
     for( int i = h->n_stored; i < idx; i++ ) {
-      h->data[i] = mrbc_nil_value();
+      mrbc_set_nil( &h->data[i] );
     }
     h->n_stored = idx + 1;
   }
@@ -254,8 +245,7 @@ int mrbc_array_push(mrbc_value *ary, mrbc_value *set_val)
   mrbc_array *h = ary->array;
 
   if( h->n_stored >= h->data_size ) {
-    int size = h->data_size + 6;
-    if( mrbc_array_resize(ary, size) != 0 ) return E_NOMEMORY_ERROR; // ENOMEM
+    mrbc_array_resize(ary, h->data_size + 6);
   }
 
   h->data[h->n_stored++] = *set_val;
@@ -278,12 +268,11 @@ int mrbc_array_push_m(mrbc_value *ary, mrbc_value *set_val)
   int new_size = ha_d->n_stored + ha_s->n_stored;
 
   if( new_size > ha_d->data_size ) {
-    if( mrbc_array_resize(ary, new_size) != 0 )
-      return E_NOMEMORY_ERROR;		// ENOMEM
+    mrbc_array_resize(ary, new_size);
   }
 
   memcpy( &ha_d->data[ha_d->n_stored], ha_s->data,
-	  sizeof(mrbc_value) * ha_s->n_stored );
+          sizeof(mrbc_value) * ha_s->n_stored );
   ha_d->n_stored += ha_s->n_stored;
 
   return 0;
@@ -361,14 +350,14 @@ int mrbc_array_insert(mrbc_value *ary, int idx, mrbc_value *set_val)
   } else if( h->n_stored >= h->data_size ) {
     size = h->data_size + 1;
   }
-  if( size && mrbc_array_resize(ary, size) != 0 ) {
-    return E_NOMEMORY_ERROR;			// ENOMEM
+  if( size ) {
+    mrbc_array_resize(ary, size);
   }
 
   // move datas.
   if( idx < h->n_stored ) {
     memmove(h->data + idx + 1, h->data + idx,
-	    sizeof(mrbc_value) * (h->n_stored - idx));
+            sizeof(mrbc_value) * (h->n_stored - idx));
   }
 
   // set data
@@ -378,7 +367,7 @@ int mrbc_array_insert(mrbc_value *ary, int idx, mrbc_value *set_val)
   // clear empty cells if need.
   if( idx >= h->n_stored ) {
     for( int i = h->n_stored-1; i < idx; i++ ) {
-      h->data[i] = mrbc_nil_value();
+      mrbc_set_nil( &h->data[i] );
     }
     h->n_stored = idx + 1;
   }
@@ -405,7 +394,7 @@ mrbc_value mrbc_array_remove(mrbc_value *ary, int idx)
   h->n_stored--;
   if( idx < h->n_stored ) {
     memmove(h->data + idx, h->data + idx + 1,
-	    sizeof(mrbc_value) * (h->n_stored - idx));
+            sizeof(mrbc_value) * (h->n_stored - idx));
   }
 
   return ret;
@@ -494,12 +483,10 @@ void mrbc_array_minmax(mrbc_value *ary, mrbc_value **pp_min_value, mrbc_value **
   @param  ary	source
   @return	result
 */
-mrbc_value mrbc_array_dup(struct VM *vm, const mrbc_value *ary)
+mrbc_value mrbc_array_dup(mrbc_vm *vm, const mrbc_value *ary)
 {
   mrbc_array *sh = ary->array;
-
   mrbc_value dv = mrbc_array_new(vm, sh->n_stored);
-  if( dv.array == NULL ) return dv;		// ENOMEM
 
   memcpy( dv.array->data, sh->data, sizeof(mrbc_value) * sh->n_stored );
   dv.array->n_stored = sh->n_stored;
@@ -526,16 +513,14 @@ mrbc_value mrbc_array_dup(struct VM *vm, const mrbc_value *ary)
     ret = divide(src, 2)
     src = [0,1], ret = [2,3]
 */
-mrbc_value mrbc_array_divide(struct VM *vm, mrbc_value *src, int pos)
+mrbc_value mrbc_array_divide(mrbc_vm *vm, mrbc_value *src, int pos)
 {
   mrbc_array *ha_s = src->array;
   if( pos < 0 ) pos = 0;
   int new_size = ha_s->n_stored - pos;
   if( new_size < 0 ) new_size = 0;
   int remain_size = ha_s->n_stored - new_size;
-
   mrbc_value ret = mrbc_array_new(vm, new_size);
-  if( ret.array == NULL ) return ret;		// ENOMEM
   mrbc_array *ha_r = ret.array;
 
   memcpy( ha_r->data, ha_s->data + remain_size, sizeof(mrbc_value) * new_size );
@@ -570,7 +555,7 @@ int mrbc_array_index(const mrbc_value *ary, const mrbc_value *val)
   @param  ary   source
   @return	result
 */
-mrbc_value mrbc_array_uniq(struct VM *vm, const mrbc_value *ary)
+mrbc_value mrbc_array_uniq(mrbc_vm *vm, const mrbc_value *ary)
 {
   mrbc_value ret = mrbc_array_dup(vm, ary);
 
@@ -613,14 +598,13 @@ int mrbc_array_uniq_self(mrbc_value *ary)
 //================================================================
 /*! method new
 */
-static void c_array_new(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_new(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     in case of new()
   */
   if( argc == 0 ) {
     mrbc_value ret = mrbc_array_new(vm, 0);
-    if( ret.array == NULL ) return;		// ENOMEM
 
     SET_RETURN(ret);
     return;
@@ -632,7 +616,6 @@ static void c_array_new(struct VM *vm, mrbc_value v[], int argc)
   if( argc == 1 && mrbc_type(v[1]) == MRBC_TT_INTEGER && mrbc_integer(v[1]) >= 0 ) {
     int num = mrbc_integer(v[1]);
     mrbc_value ret = mrbc_array_new(vm, num);
-    if( ret.array == NULL ) return;		// ENOMEM
 
     if( num > 0 ) {
       mrbc_array_set(&ret, num - 1, &mrbc_nil_value());
@@ -647,7 +630,6 @@ static void c_array_new(struct VM *vm, mrbc_value v[], int argc)
   if( argc == 2 && mrbc_type(v[1]) == MRBC_TT_INTEGER && mrbc_integer(v[1]) >= 0 ) {
     int num = mrbc_integer(v[1]);
     mrbc_value ret = mrbc_array_new(vm, num);
-    if( ret.array == NULL ) return;		// ENOMEM
 
     for( int i = 0; i < num; i++ ) {
       mrbc_incref(&v[2]);
@@ -667,7 +649,7 @@ static void c_array_new(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (operator) +
 */
-static void c_array_add(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_add(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( mrbc_type(v[1]) != MRBC_TT_ARRAY ) {
     mrbc_raise( vm, MRBC_CLASS(TypeError), 0 );
@@ -676,14 +658,12 @@ static void c_array_add(struct VM *vm, mrbc_value v[], int argc)
 
   mrbc_array *h1 = v[0].array;
   mrbc_array *h2 = v[1].array;
-
   mrbc_value value = mrbc_array_new(vm, h1->n_stored + h2->n_stored);
-  if( value.array == NULL ) return;		// ENOMEM
 
   memcpy( value.array->data,                h1->data,
-	  sizeof(mrbc_value) * h1->n_stored );
+          sizeof(mrbc_value) * h1->n_stored );
   memcpy( value.array->data + h1->n_stored, h2->data,
-	  sizeof(mrbc_value) * h2->n_stored );
+          sizeof(mrbc_value) * h2->n_stored );
   value.array->n_stored = h1->n_stored + h2->n_stored;
 
   mrbc_value *p1 = value.array->data;
@@ -700,18 +680,17 @@ static void c_array_add(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (operator) []
 */
-static void c_array_get(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_get(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     in case of Array[...] -> Array
   */
   if( mrbc_type(v[0]) == MRBC_TT_CLASS ) {
     mrbc_value ret = mrbc_array_new(vm, argc);
-    if( ret.array == NULL ) return;	// ENOMEM
 
     memcpy( ret.array->data, &v[1], sizeof(mrbc_value) * argc );
     for( int i = 1; i <= argc; i++ ) {
-      mrbc_type(v[i]) = MRBC_TT_EMPTY;
+      mrbc_set_tt( &v[i], MRBC_TT_EMPTY );
     }
     ret.array->n_stored = argc;
 
@@ -730,6 +709,67 @@ static void c_array_get(struct VM *vm, mrbc_value v[], int argc)
   }
 
   /*
+    in case of self[Range] -> Array | nil
+  */
+  if (argc == 1 && mrbc_type(v[1]) == MRBC_TT_RANGE) {
+    int len = mrbc_array_size(&v[0]);
+    mrbc_value *range_ptr = &v[1];
+
+    // Get range start and end from range object
+    mrbc_value start_val = mrbc_range_first(range_ptr);
+    mrbc_value end_val = mrbc_range_last(range_ptr);
+    int flag_exclude = mrbc_range_exclude_end(range_ptr);
+
+    // Handle beginless range (e.g., ..1, ...2)
+    int start;
+    if (mrbc_type(start_val) == MRBC_TT_NIL) {
+      start = 0;
+    } else if (mrbc_type(start_val) == MRBC_TT_INTEGER) {
+      start = mrbc_integer(start_val);
+    } else {
+      goto TYPE_ERROR;
+    }
+
+    // Handle endless range (e.g., 0.., 1..., 0..., 1...)
+    int end;
+    if (mrbc_type(end_val) == MRBC_TT_NIL) {
+      end = len;
+    } else if (mrbc_type(end_val) == MRBC_TT_INTEGER) {
+      end = mrbc_integer(end_val);
+    } else {
+      goto TYPE_ERROR;
+    }
+
+    // Negative indices
+    if (start < 0) start += len;
+    if (end < 0) end += len;
+
+    if (start < 0 || start > len) goto RETURN_NIL;
+    // Allow end < 0 only for empty arrays with endless ranges
+    if (end < 0 && len > 0) goto RETURN_NIL;
+
+    // Adjust end for exclusive range
+    if (!flag_exclude) end++;
+
+    // Calculate size
+    int size = end - start;
+    if (size < 0) size = 0;
+    if (start + size > len) size = len - start;
+
+    mrbc_value ret = mrbc_array_new(vm, size);
+    if (ret.array == NULL) return;  // ENOMEM
+
+    for (int i = 0; i < size; i++) {
+      mrbc_value val = mrbc_array_get(v, start + i);
+      mrbc_incref(&val);
+      mrbc_array_push(&ret, &val);
+    }
+
+    SET_RETURN(ret);
+    return;
+  }
+
+  /*
     in case of self[start, length] -> Array | nil
   */
   if( argc == 2 && mrbc_type(v[1]) == MRBC_TT_INTEGER && mrbc_type(v[2]) == MRBC_TT_INTEGER ) {
@@ -743,7 +783,6 @@ static void c_array_get(struct VM *vm, mrbc_value v[], int argc)
     if( size < 0 ) goto RETURN_NIL;
 
     mrbc_value ret = mrbc_array_new(vm, size);
-    if( ret.array == NULL ) return;		// ENOMEM
 
     for( int i = 0; i < size; i++ ) {
       mrbc_value val = mrbc_array_get(v, mrbc_integer(v[1]) + i);
@@ -761,6 +800,10 @@ static void c_array_get(struct VM *vm, mrbc_value v[], int argc)
   mrbc_raise( vm, MRBC_CLASS(ArgumentError), 0 );
   return;
 
+ TYPE_ERROR:
+  mrbc_raise( vm, MRBC_CLASS(TypeError), 0 );
+  return;
+
  RETURN_NIL:
   SET_NIL_RETURN();
 }
@@ -769,12 +812,12 @@ static void c_array_get(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (operator) []=
 */
-static void c_array_set(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_set(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     in case of self[nth] = val
   */
-  if( argc == 2 && v[1].tt == MRBC_TT_INTEGER ) {
+  if( argc == 2 && mrbc_type(v[1]) == MRBC_TT_INTEGER ) {
     if( mrbc_array_set(v, mrbc_integer(v[1]), &v[2]) != 0 ) {
       mrbc_raise( vm, MRBC_CLASS(IndexError), "too small for array");
       return;
@@ -784,22 +827,23 @@ static void c_array_set(struct VM *vm, mrbc_value v[], int argc)
     mrbc_incref(&v[2]);
     mrbc_decref(&v[0]);
     v[0] = v[2];
-    v[2].tt = MRBC_TT_EMPTY;
+    mrbc_set_tt(&v[2], MRBC_TT_EMPTY);
     return;
   }
 
   /*
     in case of self[start, length] = val
   */
-  if( argc == 3 && v[1].tt == MRBC_TT_INTEGER && v[2].tt == MRBC_TT_INTEGER ) {
+  if( argc == 3 && mrbc_type(v[1]) == MRBC_TT_INTEGER &&
+                   mrbc_type(v[2]) == MRBC_TT_INTEGER ) {
     int pos = mrbc_integer(v[1]);
     int len = mrbc_integer(v[2]);
 
     if( pos < 0 ) {
       pos = v[0].array->n_stored + pos;
       if( pos < 0 ) {
-	mrbc_raise( vm, MRBC_CLASS(IndexError), "index too small for array");
-	return;
+        mrbc_raise( vm, MRBC_CLASS(IndexError), "index too small for array");
+        return;
       }
     } else if( pos > v[0].array->n_stored ) {
       mrbc_array_set( &v[0], pos-1, &mrbc_nil_value() );
@@ -823,10 +867,10 @@ static void c_array_set(struct VM *vm, mrbc_value v[], int argc)
     }
 
     // append data
-    if( v[3].tt == MRBC_TT_ARRAY ) {
+    if( mrbc_type(v[3]) == MRBC_TT_ARRAY ) {
       mrbc_array_push_m(&v[0], &v[3]);
       for( int i = 0; i < v[3].array->n_stored; i++ ) {
-	mrbc_incref( &v[3].array->data[i] );
+        mrbc_incref( &v[3].array->data[i] );
       }
     } else {
       mrbc_incref(&v[3]);
@@ -839,7 +883,7 @@ static void c_array_set(struct VM *vm, mrbc_value v[], int argc)
     // return val
     mrbc_decref(&v[0]);
     v[0] = v[3];
-    v[3].tt = MRBC_TT_EMPTY;
+    mrbc_set_tt(&v[3], MRBC_TT_EMPTY);
     return;
   }
 
@@ -853,16 +897,44 @@ static void c_array_set(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) clear
 */
-static void c_array_clear(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_clear(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   mrbc_array_clear(v);
 }
 
 
 //================================================================
+/*! (method) difference(*other_arrays) -> Array
+*/
+static void c_array_difference(mrbc_vm *vm, mrbc_value v[], int argc)
+{
+  mrbc_value ret = mrbc_array_dup(vm, &v[0]);
+
+  for( int i = 1; i <= argc; i++ ) {
+    if( mrbc_type(v[i]) != MRBC_TT_ARRAY ) {
+      mrbc_raise( vm, MRBC_CLASS(TypeError), 0 );
+      return;
+    }
+
+    for( int j = 0; j < mrbc_array_size(&v[i]); j++ ) {
+      int idx;
+      while( (idx = mrbc_array_index( &ret, &v[i].array->data[j] )) >= 0 ) {
+        mrbc_array *ah = ret.array;
+        ah->n_stored--;
+        memmove(ah->data + idx, ah->data + idx + 1,
+                sizeof(mrbc_value) * (ah->n_stored - idx));
+      }
+    }
+  }
+
+  SET_RETURN(ret);
+}
+
+
+//================================================================
 /*! (method) delete_at
 */
-static void c_array_delete_at(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_delete_at(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( argc == 1 && mrbc_type(v[1]) == MRBC_TT_INTEGER ) {
     mrbc_value val = mrbc_array_remove(v, mrbc_integer(v[1]));
@@ -876,22 +948,18 @@ static void c_array_delete_at(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) empty?
 */
-static void c_array_empty(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_empty(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   int n = mrbc_array_size(v);
 
-  if( n ) {
-    SET_FALSE_RETURN();
-  } else {
-    SET_TRUE_RETURN();
-  }
+  SET_BOOL_RETURN( !n );
 }
 
 
 //================================================================
 /*! (method) size,length,count
 */
-static void c_array_size(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_size(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   int n = mrbc_array_size(v);
 
@@ -902,7 +970,7 @@ static void c_array_size(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) include?
 */
-static void c_array_include(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_include(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   SET_BOOL_RETURN(0 < mrbc_array_include(&v[0], &v[1]));
 }
@@ -911,9 +979,9 @@ static void c_array_include(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) &
 */
-static void c_array_and(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_and(mrbc_vm *vm, mrbc_value v[], int argc)
 {
-  if (v[1].tt != MRBC_TT_ARRAY) {
+  if( mrbc_type(v[1]) != MRBC_TT_ARRAY ) {
     mrbc_raisef( vm, MRBC_CLASS(TypeError), "no implicit conversion into %s", "Array");
     return;
   }
@@ -932,9 +1000,9 @@ static void c_array_and(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) |
 */
-static void c_array_or(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_or(mrbc_vm *vm, mrbc_value v[], int argc)
 {
-  if (v[1].tt != MRBC_TT_ARRAY) {
+  if( mrbc_type(v[1]) != MRBC_TT_ARRAY ) {
     mrbc_raisef( vm, MRBC_CLASS(TypeError), "no implicit conversion into %s", "Array");
     return;
   }
@@ -961,7 +1029,7 @@ static void c_array_or(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) first
 */
-static void c_array_first(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_first(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   mrbc_value val = mrbc_array_get(v, 0);
   mrbc_incref(&val);
@@ -972,7 +1040,7 @@ static void c_array_first(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) last
 */
-static void c_array_last(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_last(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   mrbc_value val = mrbc_array_get(v, -1);
   mrbc_incref(&val);
@@ -983,17 +1051,17 @@ static void c_array_last(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) push
 */
-static void c_array_push(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_push(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   mrbc_array_push(&v[0], &v[1]);
-  mrbc_type(v[1]) = MRBC_TT_EMPTY;
+  mrbc_set_tt( &v[1], MRBC_TT_EMPTY );
 }
 
 
 //================================================================
 /*! (method) pop
 */
-static void c_array_pop(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_pop(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     in case of pop() -> object | nil
@@ -1021,17 +1089,17 @@ static void c_array_pop(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) unshift
 */
-static void c_array_unshift(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_unshift(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   mrbc_array_unshift(&v[0], &v[1]);
-  mrbc_type(v[1]) = MRBC_TT_EMPTY;
+  mrbc_set_tt( &v[1], MRBC_TT_EMPTY );
 }
 
 
 //================================================================
 /*! (method) shift
 */
-static void c_array_shift(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_shift(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   /*
     in case of pop() -> object | nil
@@ -1069,7 +1137,7 @@ static void c_array_shift(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) dup
 */
-static void c_array_dup(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_dup(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   SET_RETURN( mrbc_array_dup( vm, &v[0] ) );
 }
@@ -1078,7 +1146,7 @@ static void c_array_dup(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) min
 */
-static void c_array_min(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_min(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   // Subset of Array#min, not support min(n).
 
@@ -1098,7 +1166,7 @@ static void c_array_min(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) max
 */
-static void c_array_max(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_max(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   // Subset of Array#max, not support max(n).
 
@@ -1118,7 +1186,7 @@ static void c_array_max(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) minmax
 */
-static void c_array_minmax(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_minmax(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   // Subset of Array#minmax, not support minmax(n).
 
@@ -1142,7 +1210,7 @@ static void c_array_minmax(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) uniq
 */
-static void c_array_uniq(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_uniq(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   // subset of Array#uniq
 
@@ -1159,7 +1227,7 @@ static void c_array_uniq(struct VM *vm, mrbc_value v[], int argc)
 //================================================================
 /*! (method) uniq!
 */
-static void c_array_uniq_self(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_uniq_self(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   // subset of Array#uniq!
 
@@ -1173,19 +1241,70 @@ static void c_array_uniq_self(struct VM *vm, mrbc_value v[], int argc)
 }
 
 
+//================================================================
+/*! (method) reverse
+*/
+static void c_array_reverse(mrbc_vm *vm, mrbc_value v[], int argc)
+{
+  mrbc_value *self = &v[0];
+  int n = mrbc_array_size(self);
+  mrbc_value ret = mrbc_array_new(vm, n);
+
+  // Direct access for performance.
+  for( int i = 0; i < n; i++ ) {
+    mrbc_value *v1 = &self->array->data[n - i - 1];
+    mrbc_incref(v1);
+    ret.array->data[i] = *v1;
+  }
+  ret.array->n_stored = n;
+
+  SET_RETURN( ret );
+}
+
+
+//================================================================
+/*! (method) reverse!
+*/
+static void c_array_reverse_self(mrbc_vm *vm, mrbc_value v[], int argc)
+{
+  mrbc_value *self = &v[0];
+  int n = mrbc_array_size(self);
+
+  // Direct access for performance.
+  for( int i = 0; i < n/2; i++ ) {
+    mrbc_value v1 = self->array->data[i];
+    self->array->data[i] = self->array->data[n - i - 1];
+    self->array->data[n - i - 1] = v1;
+  }
+}
+
+//================================================================
+/*! (method) deconstruct
+*/
+static void c_array_deconstruct(struct VM *vm, mrbc_value v[], int argc)
+{
+  // Check argument count (must have no arguments)
+  if (argc != 0) {
+    mrbc_raise(vm, MRBC_CLASS(ArgumentError), "wrong number of arguments");
+    return;
+  }
+  // For pattern matching - return self (not a copy)
+  // (already an array, no conversion needed)
+}
+
+
 #if MRBC_USE_STRING
 //================================================================
 /*! (method) inspect, to_s
 */
-static void c_array_inspect(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_inspect(mrbc_vm *vm, mrbc_value v[], int argc)
 {
-  if( v[0].tt == MRBC_TT_CLASS ) {
-    v[0] = mrbc_string_new_cstr(vm, mrbc_symid_to_str( v[0].cls->sym_id ));
+  if( mrbc_type(v[0]) == MRBC_TT_CLASS ) {
+    mrbc_object_inspect(vm, v, argc);
     return;
   }
 
   mrbc_value ret = mrbc_string_new_cstr(vm, "[");
-  if( !ret.string ) goto RETURN_NIL;		// ENOMEM
 
   for( int i = 0; i < mrbc_array_size(v); i++ ) {
     if( i != 0 ) mrbc_string_append_cstr( &ret, ", " );
@@ -1199,18 +1318,14 @@ static void c_array_inspect(struct VM *vm, mrbc_value v[], int argc)
   mrbc_string_append_cstr( &ret, "]" );
 
   SET_RETURN(ret);
-  return;
-
- RETURN_NIL:
-  SET_NIL_RETURN();
 }
 
 
 //================================================================
 /*! (method) join
 */
-static void c_array_join_1(struct VM *vm, mrbc_value v[], int argc,
-			   mrbc_value *src, mrbc_value *ret, mrbc_value *separator)
+static void c_array_join_1(mrbc_vm *vm, mrbc_value v[], int argc,
+                           mrbc_value *src, mrbc_value *ret, mrbc_value *separator)
 {
   if( mrbc_array_size(src) == 0 ) return;
 
@@ -1229,11 +1344,9 @@ static void c_array_join_1(struct VM *vm, mrbc_value v[], int argc,
   }
 }
 
-static void c_array_join(struct VM *vm, mrbc_value v[], int argc)
+static void c_array_join(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   mrbc_value ret = mrbc_string_new(vm, NULL, 0);
-  if( !ret.string ) goto RETURN_NIL;		// ENOMEM
-
   mrbc_value separator = (argc == 0) ? mrbc_string_new_cstr(vm, "") :
     mrbc_send( vm, v, argc, &v[1], "to_s", 0 );
 
@@ -1241,10 +1354,6 @@ static void c_array_join(struct VM *vm, mrbc_value v[], int argc)
   mrbc_decref(&separator);
 
   SET_RETURN(ret);
-  return;
-
- RETURN_NIL:
-  SET_NIL_RETURN();
 }
 
 #endif
@@ -1257,11 +1366,14 @@ static void c_array_join(struct VM *vm, mrbc_value v[], int argc)
 
   METHOD( "new",	c_array_new )
   METHOD( "+",		c_array_add )
+  METHOD( "-",		c_array_difference )
   METHOD( "[]",		c_array_get )
   METHOD( "at",		c_array_get )
   METHOD( "[]=",	c_array_set )
   METHOD( "<<",		c_array_push )
   METHOD( "clear",	c_array_clear )
+  METHOD( "difference", c_array_difference )
+  METHOD( "deconstruct", c_array_deconstruct )
   METHOD( "delete_at",	c_array_delete_at )
   METHOD( "empty?",	c_array_empty )
   METHOD( "size",	c_array_size )
@@ -1282,6 +1394,9 @@ static void c_array_join(struct VM *vm, mrbc_value v[], int argc)
   METHOD( "minmax",	c_array_minmax )
   METHOD( "uniq",	c_array_uniq )
   METHOD( "uniq!",	c_array_uniq_self )
+  METHOD( "reverse",	c_array_reverse )
+  METHOD( "reverse!",	c_array_reverse_self )
+
 #if MRBC_USE_STRING
   METHOD( "inspect",	c_array_inspect )
   METHOD( "to_s",	c_array_inspect )
