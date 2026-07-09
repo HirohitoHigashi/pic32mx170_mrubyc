@@ -3,15 +3,16 @@
   mruby/c memory management.
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
   Memory management for objects in mruby/c.
 
   STRATEGY
-   Using TLSF and FistFit algorithm.
+   Uses the TLSF and first-fit algorithms.
 
   MEMORY POOL USAGE (see struct MEMORY_POOL)
      | Memory pool header | Memory block pool to provide to application |
@@ -102,6 +103,17 @@
 /***** Macros ***************************************************************/
 #define FLI(x) ((x) >> MRBC_ALLOC_SLI_BIT_WIDTH)
 #define SLI(x) ((x) & ((1 << MRBC_ALLOC_SLI_BIT_WIDTH) - 1))
+
+/*
+  Pull Request #251 made NULL check unnecessary.
+  Should you need libc-compatible behavior for any reason,
+  you should enable this macro.
+*/
+#if 1
+# define RETURN_IF_NULL(ptr) (void)0
+#else
+# define RETURN_IF_NULL(ptr) if((ptr) == NULL) return (ptr)
+#endif
 
 
 /***** Typedefs *************************************************************/
@@ -387,6 +399,8 @@ static void alloc_profile(void)
   if (alloc_prof.max < used) alloc_prof.max = used;
   if (used < alloc_prof.min) alloc_prof.min = used;
 }
+#else
+#define alloc_profile() ((void)0)
 #endif
 
 //================================================================
@@ -558,9 +572,10 @@ void * mrbc_raw_alloc(unsigned int size)
   MRBC_OUT_OF_MEMORY();
 #else
   static const char msg[] = "Fatal error: Out of memory.\n";
-  hal_write(2, msg, sizeof(msg)-1);
+  mrbc_hal_write(2, msg, sizeof(msg)-1);
+  mrbc_hal_abort(0);
 #endif
-  return NULL;  // ENOMEM
+  return NULL;  // ENOMEM (unreachable if mrbc_hal_abort doesn't return)
 
 
  FOUND_FLI_SLI:
@@ -600,10 +615,7 @@ void * mrbc_raw_alloc(unsigned int size)
   memset( (uint8_t *)target + sizeof(USED_BLOCK), 0xaa,
           BLOCK_SIZE(target) - sizeof(USED_BLOCK) );
 #endif
-
-#if defined(MRBC_USE_ALLOC_PROF)
   alloc_profile();
-#endif
 
   return (uint8_t *)target + sizeof(USED_BLOCK);
 }
@@ -700,15 +712,15 @@ void mrbc_raw_free(void *ptr)
   {
     if( ptr == NULL ) {
       static const char msg[] = "mrbc_raw_free(): NULL pointer was given.\n";
-      hal_write(2, msg, sizeof(msg)-1);
+      mrbc_hal_write(2, msg, sizeof(msg)-1);
       return;
     }
 
     FREE_BLOCK *target = BLOCK_ADRS(ptr);
     if( target < (FREE_BLOCK *)BPOOL_TOP(pool) ||
-	target > (FREE_BLOCK *)BPOOL_END(pool) ) {
+        target > (FREE_BLOCK *)BPOOL_END(pool) ) {
       static const char msg[] = "mrbc_raw_free(): Outside memory pool address was specified.\n";
-      hal_write(2, msg, sizeof(msg)-1);
+      mrbc_hal_write(2, msg, sizeof(msg)-1);
       return;
     }
 
@@ -723,26 +735,26 @@ void mrbc_raw_free(void *ptr)
       // found target block.
       if( IS_FREE_BLOCK(block) ) {  // is Free block?
         static const char msg[] = "mrbc_raw_free(): double free detected.\n";
-        hal_write(2, msg, sizeof(msg)-1);
+        mrbc_hal_write(2, msg, sizeof(msg)-1);
         return;
       }
 
       if( PHYS_NEXT(block) >= BPOOL_END(pool) ) {  // Is this a sentinel?
         static const char msg[] = "mrbc_raw_free(): no_free address was specified.\n";
-        hal_write(2, msg, sizeof(msg)-1);
+        mrbc_hal_write(2, msg, sizeof(msg)-1);
         return;
       }
 
     } else {
       // not found target block.
       if( block < target ) {
-	static const char msg[] = "mrbc_raw_free(): no_free address was specified.\n";
-	hal_write(2, msg, sizeof(msg)-1);
-	return;
+        static const char msg[] = "mrbc_raw_free(): no_free address was specified.\n";
+        mrbc_hal_write(2, msg, sizeof(msg)-1);
+        return;
       }
 
       static const char msg[] = "mrbc_raw_free(): Illegal address.\n";
-      hal_write(2, msg, sizeof(msg)-1);
+      mrbc_hal_write(2, msg, sizeof(msg)-1);
       return;
     }
 
@@ -779,9 +791,7 @@ void mrbc_raw_free(void *ptr)
   // target, add to index
   add_free_block( pool, target );
 
-#if defined(MRBC_USE_ALLOC_PROF)
   alloc_profile();
-#endif
 }
 
 
@@ -795,8 +805,11 @@ void mrbc_raw_free(void *ptr)
 */
 void * mrbc_raw_realloc(void *ptr, unsigned int size)
 {
-  if (ptr != NULL && size == 0) {
-    mrbc_raw_free(ptr);
+  if( ptr == NULL ) {
+    return mrbc_raw_alloc(size);
+  }
+  if( size == 0 ) {
+    mrbc_raw_free(ptr);		// C90(glibc) compatible.
     return NULL;
   }
 
@@ -829,9 +842,7 @@ void * mrbc_raw_realloc(void *ptr, unsigned int size)
     SET_PREV_USED(release);
   } else {
     SET_PREV_USED(next);
-#if defined(MRBC_USE_ALLOC_PROF)
     alloc_profile();
-#endif
     return ptr;
   }
 
@@ -843,9 +854,7 @@ void * mrbc_raw_realloc(void *ptr, unsigned int size)
     SET_PREV_FREE(next);
   }
   add_free_block( pool, release );
-#if defined(MRBC_USE_ALLOC_PROF)
   alloc_profile();
-#endif
   return ptr;
 
 
@@ -853,7 +862,7 @@ void * mrbc_raw_realloc(void *ptr, unsigned int size)
   // new alloc and copy
  ALLOC_AND_COPY: {
     void *new_ptr = mrbc_raw_alloc(size);
-    if( new_ptr == NULL ) return NULL;  // ENOMEM
+    RETURN_IF_NULL( new_ptr );		// ENOMEM
 
     memcpy(new_ptr, ptr, BLOCK_SIZE(target) - sizeof(USED_BLOCK));
     mrbc_set_vm_id(new_ptr, target->vm_id);
@@ -890,7 +899,7 @@ unsigned int mrbc_alloc_usable_size(void *ptr)
 void * mrbc_alloc(const struct VM *vm, unsigned int size)
 {
   void *ptr = mrbc_raw_alloc(size);
-  if( ptr == NULL ) return NULL;	// ENOMEM
+  RETURN_IF_NULL( ptr );		// ENOMEM
 
   if( vm ) mrbc_set_vm_id(ptr, vm->vm_id);
 
@@ -910,7 +919,7 @@ void * mrbc_alloc(const struct VM *vm, unsigned int size)
 void * mrbc_calloc(const struct VM *vm, unsigned int nmemb, unsigned int size)
 {
   void *ptr = mrbc_raw_calloc(nmemb, size);
-  if( ptr == NULL ) return NULL;	// ENOMEM
+  RETURN_IF_NULL( ptr );		// ENOMEM
 
   if( vm ) mrbc_set_vm_id(ptr, vm->vm_id);
 
@@ -1045,7 +1054,7 @@ void mrbc_alloc_print_statistics( void )
   mrbc_alloc_statistics( &stat );
   mrbc_printf("== MEMORY STAT ==\n");
   mrbc_printf(" total:%d used:%d free:%d frag:%d\n",
-	      stat.total, stat.used, stat.free, stat.fragmentation );
+              stat.total, stat.used, stat.free, stat.fragmentation );
 }
 
 
@@ -1061,13 +1070,13 @@ void mrbc_alloc_print_pool_header( void *pool_header )
 
   mrbc_printf("== MEMORY POOL HEADER DUMP ==\n");
   mrbc_printf(" Address:%p - %p - %p  ", pool,
-	      BPOOL_TOP(pool), BPOOL_END(pool));
+              BPOOL_TOP(pool), BPOOL_END(pool));
   mrbc_printf(" Size Total:%d User:%d\n",
-	      pool->size, pool->size - sizeof(MEMORY_POOL));
+              pool->size, pool->size - sizeof(MEMORY_POOL));
   mrbc_printf(" sizeof MEMORY_POOL:%d(%04x), USED_BLOCK:%d(%02x), FREE_BLOCK:%d(%02x)\n",
-	      sizeof(MEMORY_POOL), sizeof(MEMORY_POOL),
-	      sizeof(USED_BLOCK), sizeof(USED_BLOCK),
-	      sizeof(FREE_BLOCK), sizeof(FREE_BLOCK) );
+              sizeof(MEMORY_POOL), sizeof(MEMORY_POOL),
+              sizeof(USED_BLOCK), sizeof(USED_BLOCK),
+              sizeof(FREE_BLOCK), sizeof(FREE_BLOCK) );
 
   mrbc_printf(" FLI/SLI bitmap and free_blocks table.\n");
   mrbc_printf("    FLI :S[0123 4567] -- free_blocks ");
@@ -1103,14 +1112,14 @@ void mrbc_alloc_print_memory_block( void *pool_header )
     mrbc_printf(" id:%02x", block->vm_id );
 #endif
     mrbc_printf(" size:%5d($%04x) use:%d prv:%d ",
-		block->size & ~0x03, block->size & ~0x03,
-		!!(block->size & 0x01), !!(block->size & 0x02) );
+                block->size & ~0x03, block->size & ~0x03,
+                !!(block->size & 0x01), !!(block->size & 0x02) );
 
     if( IS_USED_BLOCK(block) ) {
       /* Used block */
       int n = DUMP_BYTES;
       if( n > (BLOCK_SIZE(block) - sizeof(USED_BLOCK)) ) {
-	n = BLOCK_SIZE(block) - sizeof(USED_BLOCK);
+        n = BLOCK_SIZE(block) - sizeof(USED_BLOCK);
       }
       uint8_t *p = (uint8_t *)block + sizeof(USED_BLOCK);
       int i;
@@ -1120,15 +1129,15 @@ void mrbc_alloc_print_memory_block( void *pool_header )
       mrbc_printf("  ");
       p = (uint8_t *)block + sizeof(USED_BLOCK);
       for( i = 0; i < n; i++) {
-	int ch = *p++;
-	mrbc_printf("%c", (' ' <= ch && ch < 0x7f)? ch : '.');
+        int ch = *p++;
+        mrbc_printf("%c", (' ' <= ch && ch < 0x7f)? ch : '.');
       }
 
     } else {
       /* Free block */
       unsigned int index = calc_index(BLOCK_SIZE(block));
       mrbc_printf(" fli:%d sli:%d pf:%p nf:%p",
-		FLI(index), SLI(index), block->prev_free, block->next_free);
+                FLI(index), SLI(index), block->prev_free, block->next_free);
     }
 
     mrbc_printf("\n");

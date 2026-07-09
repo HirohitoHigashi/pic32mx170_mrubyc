@@ -3,8 +3,9 @@
   Class related functions.
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -32,6 +33,9 @@ extern "C" {
 
 /***** Constant values ******************************************************/
 #define MRBC_TRAVERSE_NEST_LEVEL 3
+#if !defined(MRBC_INSTANCE_DESTRUCTOR)
+# define MRBC_INSTANCE_DESTRUCTOR 1
+#endif
 
 
 /***** Macros ***************************************************************/
@@ -81,23 +85,38 @@ extern "C" {
   Class object.
 */
 typedef struct RClass {
-  mrbc_sym sym_id;		 //!< class name's symbol ID
-  unsigned int flag_builtin : 1; //!< is built-in class? (= 0)
-  unsigned int flag_module : 1;  //!< is module?
-  unsigned int flag_alias : 1;   //!< is module alias?
-  uint8_t num_builtin_method;	 //!< num of built-in method.
-  struct RClass *super;		 //!< pointer to super class.
-  union {
-    struct RMethod *method_link; //!< pointer to method link.
-    struct RClass *aliased;      //!< aliased class or module.
-  };
+  /* (note)
+     Must match the initial layout of RClass, RBuiltinClass,
+     and RBuiltinNoMethodClass for safe casting.
+  */
 #if defined(MRBC_DEBUG)
+  uint8_t obj_mark_[2];           //!< set "CL" or "MO" for debug.
   const char *name;
 #endif
 
-  void (*destructor)( mrbc_value * );	//!< specify a destructor if need.
+  mrbc_sym sym_id;                //!< class name's symbol ID
+  unsigned int flag_builtin : 1;  //!< is built-in class? (= 0)
+  unsigned int flag_nomethod : 1; //!< is built-in no method class? (= 0)
+  unsigned int flag_module : 1;   //!< is module?
+  unsigned int flag_alias : 1;    //!< is module alias?
+  uint8_t num_builtin_method;     //!< num of built-in method.
+  struct RClass *super;           //!< pointer to super class.
+
+  // --- Specific members ---
+  union {
+    struct RMethod *method_link;  //!< pointer to method link.
+    struct RClass *aliased;       //!< aliased class or module.
+  };
+
+#if MRBC_INSTANCE_DESTRUCTOR
+  void (*destructor)(mrbc_value *);	//!< specify a destructor if need.
+#endif
+
 } mrbc_class;
+
+//@cond
 typedef struct RClass mrb_class;
+//@endcond
 
 //================================================================
 /*!@brief
@@ -106,19 +125,24 @@ typedef struct RClass mrb_class;
   @extends RClass
 */
 struct RBuiltinClass {
-  mrbc_sym sym_id;		 //!< class name's symbol ID
-  unsigned int flag_builtin : 1; //!< is built-in class? (= 1)
-  unsigned int flag_module : 1;  //!< is module?
-  unsigned int flag_alias : 1;   //!< is alias class?
-  uint8_t num_builtin_method;	 //!< num of built-in method.
-  struct RClass *super;		 //!< pointer to super class.
-  union {
-    struct RMethod *method_link; //!< pointer to method link.
-    struct RClass *aliased;      //!< aliased class or module.
-  };
 #if defined(MRBC_DEBUG)
+  uint8_t obj_mark_[2];           //!< set "CL" or "MO" for debug.
   const char *name;
 #endif
+
+  mrbc_sym sym_id;                //!< class name's symbol ID
+  unsigned int flag_builtin : 1;  //!< is built-in class? (= 1)
+  unsigned int flag_nomethod : 1; //!< is built-in no method class? (= 0)
+  unsigned int flag_module : 1;   //!< is module?
+  unsigned int flag_alias : 1;    //!< is module alias?
+  uint8_t num_builtin_method;     //!< num of built-in method.
+  struct RClass *super;           //!< pointer to super class.
+
+  // --- Specific members ---
+  union {
+    struct RMethod *method_link;  //!< pointer to method link.
+    struct RClass *aliased;       //!< aliased class or module.
+  };
 
   const mrbc_sym *method_symbols;	//!< built-in method sym-id table.
   const mrbc_func_t *method_functions;	//!< built-in method function table.
@@ -131,20 +155,20 @@ struct RBuiltinClass {
   @extends RBuiltinClass
 */
 struct RBuiltinNoMethodClass {
-  mrbc_sym sym_id;		 //!< class name's symbol ID
-  unsigned int flag_builtin : 1; //!< is built-in class? (= 1)
-  unsigned int flag_module : 1;  //!< is module?
-  unsigned int flag_alias : 1;   //!< is alias class?
-  uint8_t num_builtin_method;	 //!< num of built-in method.
-  struct RClass *super;		 //!< pointer to super class.
-  union {
-    struct RMethod *method_link; //!< pointer to method link.
-    struct RClass *aliased;      //!< aliased class or module.
-  };
 #if defined(MRBC_DEBUG)
+  uint8_t obj_mark_[2];           //!< set "CL" or "MO" for debug.
   const char *name;
 #endif
+
+  mrbc_sym sym_id;                //!< class name's symbol ID
+  unsigned int flag_builtin : 1;  //!< is built-in class? (= 1)
+  unsigned int flag_nomethod : 1; //!< is built-in no method class? (= 1)
+  unsigned int flag_module : 1;   //!< is module?
+  unsigned int flag_alias : 1;    //!< is module alias?
+  uint8_t num_builtin_method;     //!< num of built-in method.
+  struct RClass *super;           //!< pointer to super class.
 };
+
 
 //================================================================
 /*!@brief
@@ -160,7 +184,10 @@ typedef struct RInstance {
   uint8_t data[];		//!< extended data
 
 } mrbc_instance;
+
+//@cond
 typedef struct RInstance mrb_instance;
+//@endcond
 
 
 //================================================================
@@ -168,8 +195,8 @@ typedef struct RInstance mrb_instance;
   Method management structure.
 */
 typedef struct RMethod {
-  uint8_t type;		//!< M:OP_DEF or OP_ALIAS, m:mrblib or define_method()
-  uint8_t c_func;	//!< 0:IREP, 1:C Func, 2:C Func (built-in)
+  uint8_t  type;	//!< M:OP_DEF or OP_ALIAS, m:mrblib or define_method()
+  uint8_t  c_func;	//!< 0:IREP, 1:C Func, 2:C Func (built-in)
   mrbc_sym sym_id;	//!< function names symbol ID
   union {
     struct IREP *irep;	//!< to IREP for ruby proc.
@@ -177,7 +204,7 @@ typedef struct RMethod {
   };
   union {
     struct RMethod *next;	//!< link to next method.
-    struct RClass *cls;		//!< return value for mrbc_find_method.
+    struct RClass  *cls;	//!< return value for mrbc_find_method.
   };
 } mrbc_method;
 
@@ -215,7 +242,7 @@ void mrbc_instance_setiv(mrbc_value *obj, mrbc_sym sym_id, mrbc_value *v);
 mrbc_value mrbc_instance_getiv(mrbc_value *obj, mrbc_sym sym_id);
 void mrbc_instance_clear_vm_id(mrbc_value *v);
 int mrbc_obj_is_kind_of(const mrbc_value *obj, const mrbc_class *tcls);
-mrbc_method *mrbc_find_method(mrbc_method *r_method, mrbc_class *cls, mrbc_sym sym_id);
+mrbc_class *mrbc_find_method(mrbc_method *r_method, mrbc_class *cls, mrbc_sym sym_id);
 mrbc_class *mrbc_get_class_by_name(const char *name);
 mrbc_value mrbc_send(struct VM *vm, mrbc_value *v, int argc, mrbc_value *recv, const char *method_name, int n_params, ...);
 void c_ineffect(struct VM *vm, mrbc_value v[], int argc);
@@ -253,6 +280,7 @@ static inline mrbc_class *find_class_by_object(const mrbc_value *obj)
 }
 
 
+#if MRBC_INSTANCE_DESTRUCTOR
 //================================================================
 /*! Define the destructor
 
@@ -269,6 +297,7 @@ static inline void mrbc_define_destructor( mrbc_class *cls, void (*destructor)(m
 
   cls->destructor = destructor;
 }
+#endif
 
 
 //================================================================

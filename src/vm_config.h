@@ -3,10 +3,12 @@
   Global configuration of mruby/c VM's
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
+
   </pre>
 */
 
@@ -47,19 +49,31 @@
 #if !defined(MRBC_USE_MATH)
 #define MRBC_USE_MATH 1		/* CHANGED */
 #endif
-/* (NOTE)
-   maybe you need
-   $ export LDFLAGS=-lm
-   $ make
-
-   on ubuntu
-   $ export LDFLAGS="-Wl,--no-as-needed -lm"
-   $ make
-*/
 
 // USE String. Support String class.
 #if !defined(MRBC_USE_STRING)
 #define MRBC_USE_STRING 1
+#endif
+
+/* USE UTF-8 String. Enable UTF-8 encoding support for String class.
+   When enabled, String methods like size, [], []=, index work with
+   UTF-8 character indices instead of byte indices.
+   0: NOT USE (ASCII/binary mode - default)
+   1: USE UTF-8
+*/
+#if !defined(MRBC_USE_STRING_UTF8)
+#define MRBC_USE_STRING_UTF8 0
+#endif
+
+/* USE Unicode case mapping. Enable full BMP Unicode case conversion.
+   Requires MRBC_USE_STRING_UTF8 to be enabled.
+   When enabled, upcase/downcase work with Greek, Cyrillic, etc.
+   Adds ~5KB to binary size.
+   0: NOT USE (ASCII-only case conversion - default)
+   1: USE full Unicode BMP case mapping
+*/
+#if !defined(MRBC_USE_UNICODE_CASE)
+#define MRBC_USE_UNICODE_CASE 0
 #endif
 
 
@@ -126,12 +140,14 @@
 // Nesting level for exception printing (default 8)
 // #define MRBC_EXCEPTION_CALL_NEST_LEVEL 8
 
-// Examples of override actions when some fatal errors.
-// #define MRBC_OUT_OF_MEMORY() mrbc_alloc_print_memory_pool(); hal_abort(0)
-// #define MRBC_ABORT_BY_EXCEPTION(vm) mrbc_p( &vm->exception ); hal_abort(0)
+// Set the following constant to 1 to enable user-defined destructors;
+// otherwise, set it to 0. The default is 1.
+#define MRBC_INSTANCE_DESTRUCTOR 1	/* CHANGED */
 
-void hal_abort(const char *s);
-#define MRBC_OUT_OF_MEMORY() hal_abort("Fatal error: Out of memory.\n")
-#define MRBC_ABORT_BY_EXCEPTION(vm) mrbc_print_vm_exception( vm ); hal_abort(0)
+// Override actions when some fatal errors.
+// Default behavior for MRBC_OUT_OF_MEMORY is to print error and call mrbc_hal_abort().
+// Uncomment and customize if you need different behavior:
+// #define MRBC_OUT_OF_MEMORY() mrbc_alloc_print_memory_pool(); mrbc_hal_abort(0)
+// #define MRBC_ABORT_BY_EXCEPTION(vm) mrbc_p( &vm->exception ); mrbc_hal_abort(0)
 
 #endif // MRBC_SRC_VM_CONFIG_H_

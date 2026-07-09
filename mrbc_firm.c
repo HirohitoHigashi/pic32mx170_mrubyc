@@ -22,7 +22,7 @@
 #include "uart.h"
 #include "mrubyc.h"
 
-#define VERSION_STRING   "mruby/c v3.3 RITE0300 MRBW1.2"
+#define VERSION_STRING   "mruby/c v4.0.0 RITE0400 MRBW1.2"
 
 static const char RITE[4] = "RITE";
 static const char WHITE_SPACE[] = " \t\r\n\f\v";
@@ -251,6 +251,7 @@ int receive_bytecode( void *buffer, int buffer_size )
 {
   char buf[50];
 
+  STRM_RESET();
   STRM_PUTS("+OK mruby/c\r\n");
 
   while( 1 ) {

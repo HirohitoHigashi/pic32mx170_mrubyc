@@ -3,8 +3,9 @@
   console output module. (not yet input)
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -95,6 +96,26 @@ static int mrbc_printf_sub_output_arg( mrbc_printf_t *pf, va_list *ap )
   return ret;
 }
 
+/* sub function to print a hashkey
+ */
+static int mrbc_p_sub_hashkey(const mrbc_value *v)
+{
+  switch( mrbc_type(*v) ) {
+    case MRBC_TT_SYMBOL:{
+      const char *s = mrbc_symbol_cstr(v);
+      const char *fmt = strchr(s, ':') ? "\"%s\": " : "%s: ";
+      mrbc_printf(fmt, s);
+      break;
+    }
+    default: {
+      mrbc_p_sub(v);
+      mrbc_print(" => ");
+      break;
+    }
+  }
+  return 0;
+}
+
 
 /***** Global functions *****************************************************/
 
@@ -108,13 +129,13 @@ void mrbc_putchar(char c)
 #if defined(MRBC_CONVERT_CRLF)
   static const char CRLF[2] = "\r\n";
   if( c == '\n' ) {
-    hal_write(1, CRLF, 2);
+    mrbc_hal_write(1, CRLF, 2);
   } else {
-    hal_write(1, &c, 1);
+    mrbc_hal_write(1, &c, 1);
   }
 
 #else
-    hal_write(1, &c, 1);
+    mrbc_hal_write(1, &c, 1);
 #endif
 }
 
@@ -157,17 +178,17 @@ void mrbc_nprint(const char *str, int size)
 
   for( int i = 0; i < size; i++ ) {
     if( *p1++ == '\n' ) {
-      hal_write(1, p2, p1 - p2 - 1);
-      hal_write(1, CRLF, 2);
+      mrbc_hal_write(1, p2, p1 - p2 - 1);
+      mrbc_hal_write(1, CRLF, 2);
       p2 = p1;
     }
   }
   if( p1 != p2 ) {
-    hal_write(1, p2, p1 - p2);
+    mrbc_hal_write(1, p2, p1 - p2);
   }
 
 #else
-  hal_write(1, str, size);
+  mrbc_hal_write(1, str, size);
 #endif
 }
 
@@ -299,7 +320,7 @@ void mrbc_vasprintf(char **buf, int bufsiz, const char *fstr, va_list ap)
   INCREASE_BUFFER:
     bufsiz += 64;
     void *newbuf = mrbc_raw_realloc( pf.buf, bufsiz );
-    if( !newbuf ) break;
+
     mrbc_printf_replace_buffer( &pf, newbuf, bufsiz );
     *buf = newbuf;
 
@@ -322,6 +343,46 @@ void mrbc_p(const mrbc_value *v)
 {
   mrbc_p_sub( v );
   mrbc_putchar('\n');
+}
+
+
+//================================================================
+/*! convert char to string (escape sequence)
+
+  @param  buf	output buffer. (5bytes at least)
+  @param  src	pointer to input char.
+*/
+void mrbc_char_to_s( char *buf, const void *src )
+{
+  unsigned char ch = *((unsigned char *)src);
+
+  if( ch == 0x7f ) goto hex;
+  if( ch < ' ' ) {
+    char ch1 = "\0\0\0\0\0\0\0abtnvfr\0\0\0\0\0\0\0\0\0\0\0\0\0e\0\0\0"[ ch ];
+    if( ch1 == 0 ) goto hex;
+    ch = ch1;
+    goto esc;
+  }
+  if( ch == '"' || ch == '\\' ) {
+    goto esc;
+  }
+
+  buf[0] = ch;
+  buf[1] = 0;
+  return;
+
+ hex:
+  buf[0] = '\\';
+  buf[1] = 'x';
+  buf[2] = "0123456789ABCDEF"[ch >> 4];
+  buf[3] = "0123456789ABCDEF"[ch & 0x0f];
+  buf[4] = 0;
+  return;
+
+ esc:
+  buf[0] = '\\';
+  buf[1] = ch;
+  buf[2] = 0;
 }
 
 
@@ -350,26 +411,62 @@ int mrbc_p_sub(const mrbc_value *v)
 
 #if MRBC_USE_STRING
   case MRBC_TT_STRING:{
-    mrbc_putchar('"');
-    const unsigned char *s = (const unsigned char *)mrbc_string_cstr(v);
+    const char *s = mrbc_string_cstr(v);
+    int size = mrbc_string_size(v);
 
-    for( int i = 0; i < mrbc_string_size(v); i++ ) {
-      if( s[i] < ' ' || 0x7f <= s[i] ) {	// tiny isprint()
-	mrbc_printf("\\x%02X", s[i]);
+    mrbc_putchar('"');
+#if MRBC_USE_STRING_UTF8
+    for( int i = 0; i < size; ) {
+      unsigned char uch = (unsigned char)s[i];
+      if( uch < 0x80 ) {
+        char buf[10];
+        mrbc_char_to_s( buf, s + i );
+        mrbc_print( buf );
+        i++;
       } else {
-	mrbc_putchar(s[i]);
+        int raw_len = mrbc_string_utf8_size(s + i);
+        int valid = (raw_len >= 2 && i + raw_len <= size);
+        if( valid ) {
+          for( int j = 1; j < raw_len; j++ ) {
+            if( ((unsigned char)s[i + j] & 0xC0) != 0x80 ) { valid = 0; break; }
+          }
+        }
+        if( valid ) {
+          mrbc_nprint(s + i, raw_len);
+          i += raw_len;
+        } else {
+          char buf[5];
+          buf[0] = '\\'; buf[1] = 'x';
+          buf[2] = "0123456789ABCDEF"[uch >> 4];
+          buf[3] = "0123456789ABCDEF"[uch & 0x0f];
+          buf[4] = 0;
+          mrbc_print( buf );
+          i++;
+        }
       }
     }
+#else
+    for( int i = 0; i < size; i++ ) {
+      char buf[10];
+      mrbc_char_to_s( buf, s + i );
+      mrbc_print( buf );
+    }
+#endif
     mrbc_putchar('"');
   } break;
 #endif
 
   case MRBC_TT_RANGE:{
-    mrbc_value v1 = mrbc_range_first(v);
-    mrbc_p_sub(&v1);
+    const mrbc_value *v1 = mrbc_range_first_p(v);
+    const mrbc_value *v2 = mrbc_range_last_p(v);
+
+    if( mrbc_type(*v1) != MRBC_TT_NIL ||
+        mrbc_type(*v2) == MRBC_TT_NIL ) mrbc_p_sub(v1);
+
     mrbc_print( mrbc_range_exclude_end(v) ? "..." : ".." );
-    v1 = mrbc_range_last(v);
-    mrbc_p_sub(&v1);
+
+    if( mrbc_type(*v1) == MRBC_TT_NIL ||
+        mrbc_type(*v2) != MRBC_TT_NIL ) mrbc_p_sub(v2);
   } break;
 
   default:
@@ -429,7 +526,11 @@ int mrbc_print_sub(const mrbc_value *v)
   case MRBC_TT_TRUE:	mrbc_print("true");		break;
   case MRBC_TT_INTEGER:	mrbc_printf("%D", v->i);	break;
 #if MRBC_USE_FLOAT
-  case MRBC_TT_FLOAT:	mrbc_printf("%g", v->d);	break;
+  case MRBC_TT_FLOAT: {
+    char buf[32];
+    mrbc_format_float(buf, sizeof(buf), v->d);
+    mrbc_printf("%s", buf);
+  } break;
 #endif
   case MRBC_TT_SYMBOL:	mrbc_print_symbol(v->sym_id);	break;
   case MRBC_TT_CLASS:   // fall through.
@@ -469,16 +570,17 @@ int mrbc_print_sub(const mrbc_value *v)
   case MRBC_TT_STRING:
     mrbc_nprint( mrbc_string_cstr(v), mrbc_string_size(v) );
     if( mrbc_string_size(v) != 0 &&
-	mrbc_string_cstr(v)[ mrbc_string_size(v) - 1 ] == '\n' ) ret = 1;
+        mrbc_string_cstr(v)[ mrbc_string_size(v) - 1 ] == '\n' ) ret = 1;
     break;
 #endif
 
   case MRBC_TT_RANGE:{
-    mrbc_value v1 = mrbc_range_first(v);
-    mrbc_print_sub(&v1);
+    mrbc_value *v1 = mrbc_range_first_p(v);
+    mrbc_value *v2 = mrbc_range_last_p(v);
+
+    mrbc_print_sub(v1);
     mrbc_print( mrbc_range_exclude_end(v) ? "..." : ".." );
-    v1 = mrbc_range_last(v);
-    mrbc_print_sub(&v1);
+    mrbc_print_sub(v2);
   } break;
 
   case MRBC_TT_HASH:{
@@ -486,8 +588,7 @@ int mrbc_print_sub(const mrbc_value *v)
     mrbc_hash_iterator ite = mrbc_hash_iterator_new(v);
     while( mrbc_hash_i_has_next(&ite) ) {
       mrbc_value *vk = mrbc_hash_i_next(&ite);
-      mrbc_p_sub(vk);
-      mrbc_print("=>");
+      mrbc_p_sub_hashkey(vk);
       mrbc_p_sub(vk+1);
       if( mrbc_hash_i_has_next(&ite) ) mrbc_print(", ");
     }
@@ -500,9 +601,9 @@ int mrbc_print_sub(const mrbc_value *v)
 
   case MRBC_TT_EXCEPTION:
     mrbc_printf("#<%s: %s>", mrbc_symid_to_str(v->exception->cls->sym_id),
-		 v->exception->message ?
-		   (const char *)v->exception->message :
-		   mrbc_symid_to_str(v->exception->cls->sym_id) );
+                 v->exception->message ?
+                   (const char *)v->exception->message :
+                   mrbc_symid_to_str(v->exception->cls->sym_id) );
     break;
 
   default:
@@ -548,9 +649,9 @@ int mrbc_printf_main( mrbc_printf_t *pf )
     pf->fstr++;
     if( ch == '%' ) {
       if( *pf->fstr == '%' ) {	// is "%%"
-	pf->fstr++;
+        pf->fstr++;
       } else {
-	goto PARSE_FLAG;
+        goto PARSE_FLAG;
       }
     }
     *pf->p++ = ch;

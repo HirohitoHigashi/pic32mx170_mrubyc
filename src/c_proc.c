@@ -3,14 +3,14 @@
   mruby/c Proc class
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
   </pre>
 */
-
 
 /***** Feature test switches ************************************************/
 /***** System headers *******************************************************/
@@ -42,13 +42,12 @@
 mrbc_value mrbc_proc_new(struct VM *vm, void *irep, uint8_t b_or_m)
 {
   mrbc_proc *proc = mrbc_alloc(vm, sizeof(mrbc_proc));
-  if( !proc ) goto RETURN;		// ENOMEM
 
   memset(proc, 0, sizeof(mrbc_proc));
   MRBC_INIT_OBJECT_HEADER( proc, "PR" );
   proc->block_or_method = b_or_m;
   if( b_or_m == 'B' ) {
-    if( vm->cur_regs[0].tt == MRBC_TT_PROC ) {
+    if( mrbc_type(vm->cur_regs[0]) == MRBC_TT_PROC ) {
       proc->callinfo_self = vm->cur_regs[0].proc->callinfo_self;
       proc->self = vm->cur_regs[0].proc->self;
     } else {
@@ -60,8 +59,7 @@ mrbc_value mrbc_proc_new(struct VM *vm, void *irep, uint8_t b_or_m)
   proc->callinfo = vm->callinfo_tail;
   proc->irep = irep;
 
- RETURN:
-  return (mrbc_value){.tt = MRBC_TT_PROC, .proc = proc};
+  return mrbc_immediate_value(MRBC_TT_PROC, .proc = proc);
 }
 
 
@@ -95,35 +93,36 @@ void mrbc_proc_clear_vm_id(mrbc_value *v)
 //================================================================
 /*! (method) new
 */
-static void c_proc_new(struct VM *vm, mrbc_value v[], int argc)
+static void c_proc_new(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   if( mrbc_type(v[1]) != MRBC_TT_PROC ) {
     mrbc_raise(vm, MRBC_CLASS(ArgumentError),
-	       "tried to create Proc object without a block");
+               "tried to create Proc object without a block");
     return;
   }
 
   v[0] = v[1];
-  v[1].tt = MRBC_TT_EMPTY;
+  mrbc_set_tt(&v[1], MRBC_TT_EMPTY);
 }
 
 
 //================================================================
 /*! (method) call
 */
-static void c_proc_call(struct VM *vm, mrbc_value v[], int argc)
+static void c_proc_call(mrbc_vm *vm, mrbc_value v[], int argc)
 {
   assert( mrbc_type(v[0]) == MRBC_TT_PROC );
 
   mrbc_callinfo *callinfo_self = v[0].proc->callinfo_self;
   mrbc_callinfo *callinfo = mrbc_push_callinfo(vm,
-				(callinfo_self ? callinfo_self->method_id : 0),
-				v - vm->cur_regs, argc);
+                                (callinfo_self ? callinfo_self->method_id : 0),
+                                v - vm->cur_regs, argc);
   if( !callinfo ) return;
 
   if( callinfo_self ) {
     callinfo->own_class = callinfo_self->own_class;
   }
+  callinfo->is_called_block = 1;
 
   // target irep
   vm->cur_irep = v[0].proc->irep;

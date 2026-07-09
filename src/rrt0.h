@@ -3,10 +3,12 @@
   Realtime multitask monitor for mruby/c
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
+
   </pre>
 */
 
@@ -16,7 +18,9 @@
 /***** Feature test switches ************************************************/
 /***** System headers *******************************************************/
 //@cond
+#include <stddef.h>
 #include <stdint.h>
+#include "vm_config.h"
 //@endcond
 
 /***** Local headers ********************************************************/
@@ -134,6 +138,16 @@ void pqall(void);
 
 
 /***** Inline functions *****************************************************/
+//================================================================
+/*! get TCB from VM pointer
+
+  @param  vm  Pointer to mrbc_vm
+  @return     Pointer to mrbc_tcb
+*/
+static inline mrbc_tcb * mrbc_get_tcb( const mrbc_vm *vm )
+{
+  return (mrbc_tcb *)((uint8_t *)vm - offsetof(mrbc_tcb, vm));
+}
 
 
 #ifdef __cplusplus

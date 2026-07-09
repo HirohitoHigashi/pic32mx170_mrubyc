@@ -3,8 +3,9 @@
   mruby/c Symbol class
 
   <pre>
-  Copyright (C) 2015- Kyushu Institute of Technology.
-  Copyright (C) 2015- Shimane IT Open-Innovation Center.
+  Copyright (C) 2015-      Kyushu Institute of Technology.
+  Copyright (C) 2015-2026  Shimane IT Open-Innovation Center.
+  Copyright (C) 2026-      Shimane Institute for Industrial Technology.
 
   This file is distributed under BSD 3-Clause License.
 
@@ -28,7 +29,9 @@ extern "C" {
 /*! Macros to specify built-in symbol IDs.
  */
 #define MRBC_SYM(sym) MRBC_SYMID_##sym
+//@cond
 #define MRB_SYM(sym)  MRBC_SYMID_##sym
+//@endcond
 
 
 /***** Typedefs *************************************************************/
@@ -73,6 +76,7 @@ static inline int mrbc_is_nested_symid(mrbc_sym sym_id)
 }
 
 
+//@cond
 // for legacy compatibility.
 static inline mrbc_sym str_to_symid(const char *str) {
   return mrbc_str_to_symid(str);
@@ -81,6 +85,7 @@ static inline mrbc_sym str_to_symid(const char *str) {
 static inline const char *symid_to_str(mrbc_sym sym_id) {
   return mrbc_symid_to_str(sym_id);
 }
+//@endcond
 
 
 #ifdef __cplusplus

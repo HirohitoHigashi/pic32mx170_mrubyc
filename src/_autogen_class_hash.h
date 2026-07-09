@@ -5,11 +5,15 @@
 static const mrbc_sym method_symbols_Hash[] = {
   MRBC_SYM(BL_BR),
   MRBC_SYM(BL_BR_EQ),
+  MRBC_SYM(__except),
+  MRBC_SYM(__pat_values),
   MRBC_SYM(clear),
   MRBC_SYM(count),
+  MRBC_SYM(deconstruct_keys),
   MRBC_SYM(delete),
   MRBC_SYM(dup),
   MRBC_SYM(empty_Q),
+  MRBC_SYM(fetch),
   MRBC_SYM(has_key_Q),
   MRBC_SYM(has_value_Q),
 #if MRBC_USE_STRING
@@ -32,11 +36,15 @@ static const mrbc_sym method_symbols_Hash[] = {
 static const mrbc_func_t method_functions_Hash[] = {
   c_hash_get,
   c_hash_set,
+  c_hash_except_keys,
+  c_hash_pat_values,
   c_hash_clear,
   c_hash_size,
+  c_hash_deconstruct_keys,
   c_hash_delete,
   c_hash_dup,
   c_hash_empty,
+  c_hash_fetch,
   c_hash_has_key,
   c_hash_has_value,
 #if MRBC_USE_STRING
@@ -62,6 +70,7 @@ struct RBuiltinClass mrbc_class_Hash = {
   .num_builtin_method = sizeof(method_symbols_Hash) / sizeof(mrbc_sym),
   .super = MRBC_CLASS(Object),
 #if defined(MRBC_DEBUG)
+  .obj_mark_ = "CL",
   .name = "Hash",
 #endif
   .method_symbols = method_symbols_Hash,
